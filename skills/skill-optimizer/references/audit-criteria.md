@@ -11,6 +11,9 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 6. [Description Triggering](#6-description-triggering)
 7. [Reference File Health](#7-reference-file-health)
 8. [Example Effectiveness](#8-example-effectiveness)
+9. [Frontmatter Completeness](#9-frontmatter-completeness)
+10. [Script & Asset Health](#10-script--asset-health)
+11. [Safety Patterns](#11-safety-patterns)
 
 ---
 
@@ -48,6 +51,8 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 **How to detect**: Scan for phrases like "if validation fails", "when errors occur", "most sessions will NOT", "this is conditional", "only when", "optional". Estimate the invocation frequency of the gated content. If the gate condition triggers in a minority of sessions and the gated block is substantial, flag it.
 
+**Sub-check: Domain organization** — When SKILL.md contains multiple conditional branches for different frameworks/platforms/domains (e.g., `if framework == React`, `if platform == AWS`) and each branch exceeds 15 lines, flag as a candidate for the domain-variant pattern: one reference file per variant, with SKILL.md containing only the selection logic. This is a warning, not an error — small branches are fine inline.
+
 **Common false positives**: Short conditional blocks (< 10 lines) are fine in the body — the overhead of a pointer + file load exceeds the token savings. Also, "if the user says X, do Y" routing logic is flow-control, not conditional content.
 
 ## 4. Internal Redundancy
@@ -72,7 +77,13 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 **How to detect**: Count occurrences of MUST, ALWAYS, NEVER, CRITICAL (case-sensitive for capitals). For each occurrence, check if the surrounding 2 lines contain a rationale clause. Also check that instructions start with verbs ("Read...", "Scan...", "Generate...") rather than noun phrases ("The reading of...", "A scan should be...").
 
-**Common false positives**: Section headers like "## Hard Rule" that use strong language for legitimate guardrails (scope boundaries, safety constraints) are acceptable. The issue is when MUST is used for stylistic preferences or minor operational details.
+**Sub-check: Over-specificity / overfitting** — Instructions that hardcode specific file names, specific user scenarios, particular format strings, or narrow examples as if they were the only use case. Overly specific instructions cause the model to follow them rigidly instead of generalizing to the user's actual context.
+
+- Warning threshold: > 3 instructions that reference concrete filenames, specific column names, exact version numbers, or single-scenario examples where the skill is meant to handle a general class of inputs.
+- How to detect: Scan for patterns like quoted file paths (`"report.xlsx"`), hardcoded identifiers, or instructions that read like "the user will provide X in format Y" when the skill should handle multiple formats. Also look for chains of narrow `if/then` rules that could be replaced by a general principle with an explanation of *why*.
+- The fix is usually to replace the specific instruction with the general principle + rationale, so the model can adapt: instead of "ALWAYS name output `report_final.docx`", write "Name the output to match the user's input filename, because downstream tools expect filename consistency."
+
+**Common false positives**: Section headers like "## Hard Rule" that use strong language for legitimate guardrails (scope boundaries, safety constraints) are acceptable. The issue is when MUST is used for stylistic preferences or minor operational details. Output format templates that use specific field names as a specification (not an example) are also acceptable.
 
 ## 6. Description Triggering
 
@@ -83,6 +94,17 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 **Error threshold**: Description is a single generic sentence with no specificity about use cases or trigger phrases.
 
 **How to detect**: Parse the description field. Check for: (a) at least one verb describing output/capability, (b) at least one trigger phrase or usage context, (c) length — very short descriptions (< 20 words) are usually too vague. Also check if the description includes domain-specific keywords that users would naturally use.
+
+**Sub-check: "When to Use" consistency** — If SKILL.md body contains a "When to Use" section (or similar: "Usage", "Triggers on"), compare its trigger scenarios against the `description` field. Any scenario listed in "When to Use" but absent from `description` is a triggering gap — the skill body knows when it should fire, but the metadata that Claude uses for routing doesn't reflect it.
+
+- Warning threshold: ≥ 1 trigger scenario in the body's "When to Use" that has no corresponding keyword or phrase in the description.
+- How to detect: Extract bullet points or phrases from the "When to Use" section. For each, check if the description contains the same keyword, a synonym, or a semantically equivalent trigger phrase. Flag gaps.
+- The fix: add the missing trigger context to the description field so Claude can match on it during routing.
+
+**Sub-check: Keyword coverage** — Scan the SKILL.md body for recurring domain-specific terms (nouns and verbs that appear 3+ times and are not common English words). If a core term is absent from the description, the skill may not trigger when users mention that term.
+
+- Info threshold: ≥ 1 core domain term missing from the description.
+- How to detect: Extract content terms from SKILL.md (excluding stop words, markdown syntax, and structural words like "step", "section", "file"). Rank by frequency. Check the top 5-10 terms against the description.
 
 **Common false positives**: Some skills are genuinely narrow in scope and a concise description is appropriate. Don't flag brevity alone — flag lack of trigger context.
 
@@ -98,11 +120,11 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 - Warning threshold: Any file not referenced.
 - How to detect: List all files in `references/`. For each, search SKILL.md for the filename. If no match, it's an orphan.
 
-**Sub-check C — Broken references**: SKILL.md mentions a reference file path that doesn't exist on disk.
-- Error threshold: Any broken reference.
-- How to detect: Extract all file paths from SKILL.md that point to `references/` (or equivalent relative paths). Check each exists.
+**Sub-check C — Broken references**: SKILL.md mentions a file path (in `references/`, `scripts/`, or `assets/`) that doesn't exist on disk.
+- Error threshold: Any broken reference, regardless of directory.
+- How to detect: Extract all file paths from SKILL.md that point to `references/`, `scripts/`, or `assets/` (or equivalent relative paths). Check each exists. A broken pointer to a script is just as much a bug as a broken pointer to a reference doc.
 
-**Common false positives**: Files in `assets/` or `scripts/` that are invoked by commands (not loaded as context) may not appear literally in SKILL.md — they might be referenced via a script argument. Only flag `references/` orphans, since those are meant to be read into context.
+**Common false positives**: Files in `assets/` or `scripts/` that are invoked by commands (not loaded as context) may not appear literally in SKILL.md — they might be referenced via a script argument. For orphan detection, only flag `references/` orphans, since those are meant to be read into context. But for broken reference detection, check all directories — a path that SKILL.md tells the model to use must exist.
 
 ## 8. Example Effectiveness
 
@@ -115,3 +137,60 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 **How to detect**: Find fenced code blocks or sections labeled "Example". Measure their length. Assess whether they show realistic, non-trivial usage (concrete inputs/outputs) vs trivially obvious cases ("run command X" → "output: success"). Also check if examples are outdated (referencing features or formats that don't match the current instructions).
 
 **Common false positives**: Output format templates (showing the exact report structure to generate) look like examples but are actually specifications. Don't flag those — they're necessary reference material.
+
+## 9. Frontmatter Completeness
+
+**What to measure**: Whether the YAML frontmatter is well-formed and contains all required fields per skill-creator standards.
+
+**Error threshold**: Missing `name` or `description` field — these are required for the skill to be recognized and triggered.
+
+**Warning threshold**: Any of the following:
+- `name` does not match the skill's directory name (causes confusion when installing/referencing)
+- `description` is present but empty or contains only whitespace
+- YAML frontmatter is malformed (not enclosed in `---` delimiters, invalid YAML syntax)
+
+**How to detect**: Parse the file's first lines for `---` delimiters. Extract the YAML block between them. Validate:
+1. `---` appears on line 1
+2. A closing `---` appears before the markdown body
+3. `name` key exists and is a non-empty string
+4. `description` key exists and is a non-empty string
+5. `name` value matches the parent directory name (case-insensitive comparison)
+
+**Common false positives**: Some skills use additional frontmatter fields (e.g., `compatibility`, `version`) — these are optional and should not be flagged as unexpected. Only check required fields.
+
+## 10. Script & Asset Health
+
+**What to measure**: Health of the `scripts/` and `assets/` directories, complementing D7's focus on `references/`.
+
+**Sub-check A — Script executability**: Scripts in `scripts/` that are referenced by SKILL.md but lack execute permissions or have syntax issues.
+- Warning threshold: A `.sh` file without execute permission. A `.py` file with a syntax error detectable by `python -m py_compile`.
+- How to detect: For shell scripts, check `ls -l` for the `x` bit. For Python scripts, run `python -m py_compile` (non-destructive, read-only). Don't run scripts — just check they could run.
+
+**Sub-check B — Orphan scripts/assets**: Files in `scripts/` or `assets/` that are never referenced from SKILL.md or from other reference files.
+- Info threshold: Any unreferenced file. This is info, not warning, because scripts/assets may be invoked indirectly (via another script, or by the model at runtime based on judgment).
+- How to detect: List all files in `scripts/` and `assets/`. For each, search SKILL.md and all `references/*.md` files for the filename. If no match, flag as potentially orphaned.
+
+**Sub-check C — Python package structure**: If `scripts/` contains Python files imported as modules (e.g., SKILL.md says `python -m scripts.foo`), check that `__init__.py` exists.
+- Warning threshold: Module-style invocation without `__init__.py`.
+- How to detect: Search SKILL.md for `python -m scripts` patterns. If found, check for `scripts/__init__.py`.
+
+**Common false positives**: Assets like icons, fonts, or template files may be used by generated output rather than loaded by the model — they won't appear in SKILL.md. Flag at info level only, and note "may be used indirectly" in the finding.
+
+## 11. Safety Patterns
+
+**What to measure**: Lightweight scan for patterns that violate skill-creator's "Principle of Lack of Surprise" — a skill's contents should not surprise the user in their intent.
+
+**Warning threshold**: Any of the following patterns appearing in SKILL.md, reference files, or scripts:
+- Destructive shell commands: `rm -rf`, `mkfs`, `dd if=`, `> /dev/sd`
+- Remote code execution: `curl ... | sh`, `wget ... | bash`, `eval()` on user input
+- Credential/data exfiltration: `curl -X POST` with file contents, piping env vars or secrets to external URLs
+- Privilege escalation: `chmod 777`, `sudo` without clear context
+
+**Error threshold**: A pattern that is clearly destructive or exfiltrating with no adjacent explanation of why it's safe or necessary.
+
+**How to detect**: Scan all files under the skill directory (SKILL.md, references/, scripts/, assets/) for the patterns listed above using regex matching. For each match, check if the surrounding 3 lines contain an explanation or safety context (e.g., "this is safe because...", "only runs in sandbox", "user must confirm first").
+
+**Common false positives**:
+- Documentation or examples that show dangerous commands in fenced code blocks as "what NOT to do" — check if the block is inside a warning/caution section.
+- Build scripts that legitimately use `rm -rf` on a temp directory with a well-scoped path (e.g., `rm -rf /tmp/skill-build-*`) — the concern is unscoped `rm -rf /` or `rm -rf $VAR` without validation.
+- Skills that are explicitly about security testing or system administration may legitimately contain these patterns. If the skill's description indicates a security/admin domain, reduce severity to info.
