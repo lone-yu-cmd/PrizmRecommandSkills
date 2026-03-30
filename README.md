@@ -32,6 +32,20 @@ Audit and refactor SKILL.md files against [skill-creator](https://github.com/ant
 /skill-optimizer <path-to-skill-directory> [--diagnose-only] [--dimensions N,N,...]
 ```
 
+### skill-reviewer
+
+Static audit of SKILL.md files against skill-creator writing standards.
+
+**What it does:**
+- Read-only 11-dimension audit: body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, frontmatter, script health, safety patterns, and more
+- Produces a diagnostic report with severity levels (error / warning / info / style)
+- Does NOT modify any files — purely diagnostic
+
+**Usage:**
+```
+/skill-reviewer <path-to-skill-directory> [--dimensions N,N,...]
+```
+
 ### skill-auditor
 
 Evaluate skill effectiveness through test runs, grading, benchmarking, and A/B comparison.
