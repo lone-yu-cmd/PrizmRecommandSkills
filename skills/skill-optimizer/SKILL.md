@@ -40,7 +40,7 @@ Resolve the target path to find SKILL.md. Read it fully. Also read all files und
 
 Read `references/audit-criteria.md` from this skill's directory. This contains the detailed rubrics for each dimension.
 
-#### Step 3: Run 11-dimension audit
+#### Step 3: Run 17-dimension audit
 
 Evaluate the target skill against these dimensions (detailed criteria in the reference file):
 
@@ -55,6 +55,12 @@ Evaluate the target skill against these dimensions (detailed criteria in the ref
 9. **Frontmatter completeness** — required fields present (name, description), YAML well-formed, name matches directory
 10. **Script & asset health** — executability, orphan detection, Python package structure
 11. **Safety patterns** — destructive commands, remote code execution, data exfiltration patterns
+12. **Diagram effectiveness** — workflow descriptions using ASCII tree format instead of LLM-friendly numbered lists
+13. **Visual noise** — decorative markdown, emoji, and HTML styling that wastes tokens without adding semantic value
+14. **Semantic referencing** — positional references ("see above") instead of named anchors ("see §Phase 2 Step 3")
+15. **Heading hierarchy** — heading nesting deeper than 4 levels, increasing LLM context tracking burden
+16. **Information chunking** — dense paragraphs (100+ words) and wide tables (5+ columns) that hinder token-level parsing
+17. **Pronoun clarity** — ambiguous pronouns ("it", "this") with unclear referents that LLMs may misresolve
 
 If `--dimensions` was specified, run only the listed dimensions.
 

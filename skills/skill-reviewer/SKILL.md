@@ -5,7 +5,7 @@ description: "Static audit of SKILL.md files against skill-creator writing stand
 
 # Skill Reviewer
 
-Read-only static audit of any skill against skill-creator writing standards. Evaluates 11 dimensions — body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, safety patterns, and more — and produces a diagnostic report without modifying any files.
+Read-only static audit of any skill against skill-creator writing standards. Evaluates 17 dimensions — body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, safety patterns, and more — and produces a diagnostic report without modifying any files.
 
 The audit criteria come from skill-creator's own guidelines — this skill doesn't invent new rules, it enforces the existing ones.
 
@@ -21,7 +21,7 @@ The audit criteria come from skill-creator's own guidelines — this skill doesn
 
 Accepts either a skill directory path or a direct path to a SKILL.md file.
 
-`--dimensions`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all 11 dimensions.
+`--dimensions`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all 17 dimensions.
 
 ---
 
@@ -35,7 +35,7 @@ Resolve the target path to find SKILL.md. Read it fully. Also read all files und
 
 Read `references/audit-criteria.md` from this skill's directory (skill-reviewer's own references, not the target skill's). This contains the detailed rubrics for each dimension — thresholds, detection methods, false positive guidance.
 
-#### Step 3: Run 11-dimension audit
+#### Step 3: Run 17-dimension audit
 
 Evaluate the target skill against these dimensions (detailed criteria in the reference file):
 
@@ -50,6 +50,12 @@ Evaluate the target skill against these dimensions (detailed criteria in the ref
 9. **Frontmatter completeness** — required fields present (name, description), YAML well-formed, name matches directory
 10. **Script & asset health** — executability, orphan detection, Python package structure
 11. **Safety patterns** — destructive commands, remote code execution, data exfiltration patterns
+12. **Diagram effectiveness** — workflow descriptions using ASCII tree format instead of LLM-friendly numbered lists
+13. **Visual noise** — decorative markdown, emoji, and HTML styling that wastes tokens without adding semantic value
+14. **Semantic referencing** — positional references ("see above") instead of named anchors ("see §Phase 2 Step 3")
+15. **Heading hierarchy** — heading nesting deeper than 4 levels, increasing LLM context tracking burden
+16. **Information chunking** — dense paragraphs (100+ words) and wide tables (5+ columns) that hinder token-level parsing
+17. **Pronoun clarity** — ambiguous pronouns ("it", "this") with unclear referents that LLMs may misresolve
 
 If `--dimensions` was specified, run only the listed dimensions.
 

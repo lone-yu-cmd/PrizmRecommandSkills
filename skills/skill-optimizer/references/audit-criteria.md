@@ -14,6 +14,12 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 9. [Frontmatter Completeness](#9-frontmatter-completeness)
 10. [Script & Asset Health](#10-script--asset-health)
 11. [Safety Patterns](#11-safety-patterns)
+12. [Diagram Effectiveness](#12-diagram-effectiveness)
+13. [Visual Noise](#13-visual-noise)
+14. [Semantic Referencing](#14-semantic-referencing)
+15. [Heading Hierarchy](#15-heading-hierarchy)
+16. [Information Chunking](#16-information-chunking)
+17. [Pronoun Clarity](#17-pronoun-clarity)
 
 ---
 
@@ -194,3 +200,131 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 - Documentation or examples that show dangerous commands in fenced code blocks as "what NOT to do" — check if the block is inside a warning/caution section.
 - Build scripts that legitimately use `rm -rf` on a temp directory with a well-scoped path (e.g., `rm -rf /tmp/skill-build-*`) — the concern is unscoped `rm -rf /` or `rm -rf $VAR` without validation.
 - Skills that are explicitly about security testing or system administration may legitimately contain these patterns. If the skill's description indicates a security/admin domain, reduce severity to info.
+
+## 12. Diagram Effectiveness
+
+**What to measure**: Whether workflow or process descriptions use ASCII tree-drawing characters (`│├└─→` with indentation) when a numbered list or prose would communicate the same information more effectively to an LLM.
+
+LLMs process text as token sequences — they don't perceive spatial relationships from box-drawing characters the way a human eye does. When a workflow is rendered as an ASCII tree, the `│`, `├`, `└`, `─` characters and surrounding whitespace are noise tokens that consume context budget without adding information the model can act on. A numbered list conveys the same sequential or hierarchical structure more directly and with fewer tokens.
+
+This dimension applies only to **workflow/process diagrams** — sequences of steps, phases, or actions. Directory structure diagrams (`skill-name/├── SKILL.md`) are excluded because they are a well-established convention with extensive training exposure that LLMs parse reliably.
+
+**Warning threshold**: A block containing 2+ tree-drawing characters (`│`, `├`, `└`, `─`, `┌`, `┐`, `┘`, `┤`, `┬`, `┴`, `┼`) where the content describes actions, phases, steps, or workflows rather than file paths.
+
+**How to detect**:
+1. Scan for fenced or inline blocks containing tree-drawing characters.
+2. Classify each match:
+   - **Directory structure**: Lines contain file extensions (`.md`, `.py`, `.json`, `.sh`), path separators (`/`), or common directory names (`scripts/`, `references/`, `assets/`, `src/`). → Skip.
+   - **Workflow diagram**: Lines contain action verbs, phase/step numbers, arrow operators (`→`, `->`, `=>`), or process nouns ("brainstorm", "plan", "launch", "evaluate", "generate", "monitor"). → Flag as warning.
+3. If a block mixes file paths and action descriptions, flag at **info** level for manual review.
+
+**Finding format**: Include a before/after conversion showing how the tree diagram would look as a numbered list.
+
+**Example before (warning)**:
+```
+feature-workflow <idea>
+   │
+   ├── Phase 1: Brainstorm → deep Q&A
+   │
+   ├── Phase 2: Plan → planner → output.json
+   │
+   └── Phase 3: Launch → pipeline execution
+```
+
+**Example after (recommended)**:
+```
+1. Brainstorm — deep interactive Q&A until requirements are clear
+2. Plan — run feature-planner, output feature-list.json
+3. Launch — run pipeline-launcher, execute pipeline
+```
+
+**Common false positives**:
+- Directory tree diagrams showing file/folder structure — these are not workflow diagrams. Classify by content, not by characters.
+- A tree diagram inside an "Output Format" section may specify user-facing output rather than LLM instructions. In that context the diagram serves a formatting purpose. Flag at info level rather than warning.
+- Very short trees (under 5 lines, single level) have minimal token overhead. Flag at info level.
+
+## 13. Visual Noise
+
+**What to measure**: Decorative markdown formatting, emoji, and HTML styling that consumes tokens without adding semantic value for the LLM. Humans benefit from visual emphasis (bold, color, emoji); LLMs pay the token cost but derive no comprehension benefit.
+
+**Warning threshold**: More than 5 purely-decorative markers per 100 lines. "Purely-decorative" means the formatting adds visual emphasis but no semantic information — removing it would not change the instruction's meaning.
+
+**How to detect**:
+1. **Emoji in instructions**: Scan for emoji characters used as bullet markers or emphasis (e.g., `🔥 Important`, `✅ Step complete`, `⚠️ Warning`). Emoji in output templates or user-facing content are acceptable.
+2. **Excessive bold/italic for emphasis**: Count `**text**` and `_text_` occurrences that wrap single words for emphasis rather than marking terms-of-art or section labels. Example: `**ALWAYS** validate` — the caps already convey emphasis, the bold is redundant token cost.
+3. **HTML comments and styling**: Scan for `<!-- -->` comments and inline HTML (`<span style=...>`, `<font>`, `<br>`) that only affect rendering.
+4. **Decorative separators**: Repeated characters used as visual dividers beyond standard markdown `---` (e.g., `=====`, `*****`, `~~~~~`).
+
+**Common false positives**:
+- Bold used for **section labels** or **term definitions** is semantic, not decorative — it marks structure. Skip these.
+- Emoji in user-facing output templates (the skill tells the model to produce emoji for the human user) are intentional. Only flag emoji used in instructions-to-the-model.
+- Standard markdown `---` horizontal rules between major sections are acceptable structural markers.
+
+## 14. Semantic Referencing
+
+**What to measure**: Whether cross-references use explicit section names or anchors versus positional language ("above", "below", "earlier", "following") that relies on visual proximity. LLMs process tokens sequentially and don't have a spatial sense of "above" and "below" the way a human scanning a page does. Named references are unambiguous; positional references require the model to search backward or forward.
+
+**Warning threshold**: More than 2 positional references per 50 lines without an accompanying explicit anchor.
+
+**How to detect**:
+1. Scan for positional reference phrases: "see above", "as mentioned above", "the table above", "see below", "as follows", "the following", "as mentioned earlier", "the preceding", "per the earlier section".
+2. For each match, check if the sentence also contains an explicit section name, step number, or anchor (e.g., "see §Error Codes above" or "as mentioned in Phase 2 Step 3"). If the explicit reference exists, the positional word is redundant but not harmful — skip.
+3. Flag bare positional references that lack an explicit anchor.
+
+**Suggested fix**: Replace positional references with named ones.
+- Before: `"Per the error table above, check the severity."`
+- After: `"Per the error table in §Phase 2 Step 4, check the severity."`
+
+**Common false positives**:
+- "The following example:" immediately followed by a code block is a common and unambiguous pattern — the referent is the next element. Flag only when the referent is distant (>5 lines away) or ambiguous.
+
+## 15. Heading Hierarchy
+
+**What to measure**: Depth of markdown heading nesting. Each heading level adds a scope layer the LLM must track (Skill > Phase > Step > Sub-step > Detail). Deeply nested headings increase cognitive load and make it harder for the model to maintain context about where it is in the document.
+
+**Info threshold**: Any heading at level 5 (`#####`) or deeper. Skills should target a maximum of 4 heading levels (`#` through `####`).
+
+**How to detect**: Scan for `#####` or deeper headings. Count the maximum heading depth used in the file.
+
+**Suggested fix**: Replace deep headings with bold text labels or numbered sub-items within the parent section:
+- Before: `##### Technical detail about validation`
+- After: `**Validation detail:** ...` (within a `####` section)
+
+**Common false positives**:
+- Reference files that document complex hierarchical data (API specs, nested config schemas) may legitimately need deep nesting to mirror the data structure. Flag at info level and note "may be justified by data structure."
+
+## 16. Information Chunking
+
+**What to measure**: Whether content is chunked into digestible units or presented as dense blocks that are harder for LLMs to parse efficiently.
+
+**Info threshold**: (a) A single paragraph exceeding 100 words without internal structure (bullets, line breaks, sub-sentences). (b) A markdown table with more than 5 columns — wide tables become long token sequences where column alignment is lost.
+
+**How to detect**:
+1. **Dense paragraphs**: Count words between blank lines or structural markers. Flag paragraphs exceeding 100 words.
+2. **Wide tables**: Count `|` delimiters per row. More than 6 `|` characters (indicating 5+ data columns) suggests the table may be better expressed as a definition list or grouped bullets.
+
+**Suggested fix**:
+- Dense paragraphs → break into bullets or numbered steps
+- Wide tables → convert to definition lists, or split into multiple narrower tables grouped by concern
+
+**Common false positives**:
+- Prose explanations of "why" (rationale sections) may naturally run long because they're building an argument. These are valuable context for the LLM. Flag only if the paragraph contains multiple distinct instructions mixed into one block.
+
+## 17. Pronoun Clarity
+
+**What to measure**: Ambiguous pronouns ("it", "this", "that", "these", "they") where the referent is unclear because multiple noun phrases precede the pronoun. Humans resolve ambiguity from visual context and paragraph flow; LLMs rely on token distance and explicit reference.
+
+**Info threshold**: A pronoun whose nearest candidate referent is more than 2 sentences back, or where 2+ distinct noun phrases appear between the pronoun and its likely referent.
+
+**How to detect**:
+1. Scan for pronouns: "it", "this", "that", "these", "those", "they", "them".
+2. For each pronoun, look at the preceding 2-3 sentences. Count distinct noun phrases that could be the referent.
+3. If 2+ plausible referents exist and the pronoun is more than 1 sentence away from any of them, flag as info.
+
+**Suggested fix**: Replace the pronoun with the explicit noun.
+- Before: `"The model reads the config file and uses it to determine the output format. This is important because..."`
+- After: `"The model reads the config file and uses the config to determine the output format. Correct output formatting is important because..."`
+
+**Common false positives**:
+- Pronouns in short, simple sentences where the referent is unambiguous (e.g., "Read the file. It contains the error codes.") — only one possible referent. Skip these.
+- "This" used as a demonstrative adjective with a noun ("this section", "this step") is explicit, not ambiguous. Only flag bare "this" used as a pronoun.
