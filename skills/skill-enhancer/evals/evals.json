@@ -1,0 +1,23 @@
+{
+  "skill_name": "skill-enhancer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我有一个skill叫skill-reviewer，目前它只输出诊断报告但没有提供修复建议。我想给它添加一个 'Fix Suggestions' section，在报告之后为每个error级别的finding给出具体的修复步骤。路径是 skills/skill-reviewer",
+      "expected_output": "Enhancement plan showing: 1) A new 'Fix Suggestions' section to be added to SKILL.md after the Output Format section, 2) Content uses imperative style and explains rationale, 3) Line budget check shows SKILL.md stays under 500 lines, 4) Verification that new section doesn't overlap with skill-optimizer's refactoring responsibility",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "skill-auditor缺少一个dedicated的validator agent，目前验证逻辑散落在各个phase里。我想给它补充一个 agents/validator.md，专门负责验证eval outputs是否符合schema。skill路径: skills/skill-auditor",
+      "expected_output": "Enhancement plan showing: 1) New agents/validator.md file with standard agent structure (role, task, inputs, output format, evaluation criteria), 2) SKILL.md modification adding a conditional pointer to the agent file, 3) Agent is self-contained and doesn't depend on reading SKILL.md, 4) Output format matches what skill-auditor expects",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "我的skill-optimizer在Phase 2重构步骤里缺少examples，用户很难理解instruction rewriting的before/after效果。帮我补充2-3个具体的instruction rewriting examples，展示从MUST风格到explain-the-why风格的转换。路径 skills/skill-optimizer",
+      "expected_output": "Enhancement plan showing: 1) Examples added to Phase 2 Step 2 section, 2) Each example shows a before (MUST-style directive) and after (rationale-based instruction) pair, 3) Examples are realistic and under 30 lines total, 4) Line budget check confirms SKILL.md stays under 500 lines, 5) Examples don't duplicate the existing style suggestions in the Output Format section",
+      "files": []
+    }
+  ]
+}
