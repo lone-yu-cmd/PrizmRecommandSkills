@@ -1,11 +1,11 @@
 ---
 name: "skill-optimizer"
-description: "Audit and refactor SKILL.md files against skill-creator writing standards. Use this skill whenever someone wants to review skill quality, refactor a skill's structure, a skill feels too long or triggers poorly, before releasing a skill, or when restructuring skill content. Triggers on: 'optimize skill', 'audit skill', 'refactor skill', 'review skill quality', 'skill health check', 'skill too long'."
+description: "Audit and optimize SKILL.md files against skill-creator writing standards. Use this skill whenever someone wants to review skill quality, a skill feels too long or triggers poorly, before releasing a skill, or when restructuring skill content. Triggers on: 'optimize skill', 'audit skill', 'review skill quality', 'skill health check', 'skill too long'."
 ---
 
 # Skill Optimizer
 
-Audit any skill against skill-creator writing standards, then refactor it. Three phases: diagnose (read-only audit report), refactor (rewrite and restructure per skill-creator principles, with user confirmation), review (verify nothing was lost).
+Audit any skill against skill-creator writing standards, then optimize it. Three phases: diagnose (read-only audit report), optimize (apply targeted fixes per diagnostic findings, with user confirmation), review (verify nothing was lost).
 
 The audit criteria come from skill-creator's own guidelines — this skill doesn't invent new rules, it enforces the existing ones.
 
@@ -16,13 +16,14 @@ The audit criteria come from skill-creator's own guidelines — this skill doesn
 - Before publishing or sharing a skill
 - After major edits to a skill, as a quality check
 
-### `/skill-optimizer` \<path-to-skill-directory\> [--diagnose-only] [--dimensions N,N,...]
+### `/skill-optimizer` \<path-to-skill-directory\> [options]
 
 Accepts either a skill directory path or a direct path to a SKILL.md file.
 
-`--diagnose-only`: Run Phase 1 only (read-only audit, no modifications).
+Supported options (free-text, not parsed as CLI flags):
 
-`--dimensions`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all dimensions.
+- `--diagnose-only`: Run Phase 1 only (read-only audit, no modifications).
+- `--dimensions N,N,...`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all dimensions.
 
 Default mode: run all three phases with a confirmation gate before Phase 2.
 
@@ -78,21 +79,21 @@ Output the report to conversation using the format in §Output Format below. Do 
 
 If `--diagnose-only` was specified, stop here with a summary.
 
-Otherwise, present the report and ask: "Ready to proceed with refactoring? (yes to proceed / no to stop)"
+Otherwise, present the report and ask: "Ready to proceed with optimization? (yes to proceed / no to stop)"
 
 ---
 
-## Phase 2: Refactor
+## Phase 2: Optimize
 
 **Precondition**: User explicitly confirmed "yes" after reviewing the diagnostic report.
 
-Refactoring strictly follows skill-creator's core principles. Each step maps to a specific standard — this is not mechanical file moving, it is principle-driven restructuring.
+Apply targeted fixes for diagnostic findings. Each step addresses a specific category — only the parts flagged in Phase 1 are touched, unflagged content stays as-is.
 
 Steps 1–4 are planning steps: prepare all proposed changes without writing any files. Step 5 previews them for user confirmation. Step 6 applies.
 
-#### Step 1: Architecture refactoring — Progressive Disclosure
+#### Step 1: Structure optimization — Progressive Disclosure
 
-Reorganize content across skill-creator's three loading levels:
+Reorganize flagged content across skill-creator's three loading levels. Only move content that was flagged in Phase 1 (D2/D3 findings) — don't reorganize sections that passed audit.
 
 - **Level 1 (Metadata)**: Ensure `name` and `description` frontmatter are complete. Fix D9 findings. Align `name` with directory name.
 - **Level 2 (SKILL.md body)**: Retain only flow-control logic — decisions, routing, gates, phase structure, and the "what/when" of each step. Target < 500 lines.
@@ -104,13 +105,13 @@ Reorganize content across skill-creator's three loading levels:
 
 For each extraction, replace removed content with a pointer that states *when* to load it — not just a path, but the condition: "Read `references/error-recovery.md` when a validation error occurs in Step 3."
 
-#### Step 2: Instruction refactoring — Explain the Why
+#### Step 2: Instruction improvement — Explain the Why
 
-Rewrite instructions following skill-creator's core writing principle: "explain to the model why things are important in lieu of heavy-handed musty MUSTs. Use theory of mind and try to make the skill general."
+Improve flagged instructions following skill-creator's core writing principle: "explain to the model why things are important in lieu of heavy-handed musty MUSTs. Use theory of mind and try to make the skill general."
 
 For each D5 finding:
 
-1. **Rewrite directives with rationale** — Transform `MUST/ALWAYS/NEVER` into: imperative verb + action + reason. Example: `"ALWAYS validate JSON"` → `"Validate the output as JSON before returning, because the downstream pipeline silently drops malformed payloads and the user won't see an error until much later."`
+1. **Improve directives with rationale** — Transform `MUST/ALWAYS/NEVER` into: imperative verb + action + reason. Example: `"ALWAYS validate JSON"` → `"Validate the output as JSON before returning, because the downstream pipeline silently drops malformed payloads and the user won't see an error until much later."`
 
 2. **Generalize over-specific instructions** — Replace hardcoded filenames, formats, or single-scenario assumptions with the general principle. Example: `"ALWAYS name output report_final.docx"` → `"Name the output to match the user's input filename — downstream tools expect filename consistency."` The model is smart enough to adapt when it understands *why*.
 
@@ -118,7 +119,7 @@ For each D5 finding:
 
 4. **Resolve contradictions** — If two instructions conflict (D5 error findings), determine which reflects the skill author's actual intent and remove the other.
 
-Present all instruction rewrites and deletions as a numbered list of **before → after** pairs. The user confirms or rejects each individually — rewrites can shift meaning, and the skill author's intent takes precedence over generic optimization.
+Present all instruction improvements and deletions as a numbered list of **before → after** pairs. The user confirms or rejects each individually — rewrites can shift meaning, and the skill author's intent takes precedence over generic optimization.
 
 #### Step 3: Description optimization — Combat Undertriggering
 
@@ -154,7 +155,7 @@ After preparing all changes (Steps 1–4), generate a unified preview before wri
 
 For each file to be modified or created, show:
 - Unified-diff style view of removals and additions
-- Grouped by the step that produced them (Architecture / Instruction / Description / Health)
+- Grouped by the step that produced them (Structure / Instruction / Description / Health)
 - A brief rationale for each change
 
 Present to the user: "Apply these changes? (yes to apply all / partial to select which changes / no to cancel)"
@@ -164,7 +165,7 @@ Present to the user: "Apply these changes? (yes to apply all / partial to select
 Write all confirmed changes. Print a change summary:
 - Files modified, files created, files deleted
 - Lines removed / added
-- Instructions rewritten (count)
+- Instructions improved (count)
 - Description: changed or unchanged
 
 ---
