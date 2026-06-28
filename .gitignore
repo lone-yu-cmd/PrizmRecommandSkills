@@ -2,3 +2,5 @@
 .claude
 .codebuddy
 skills-lock.json
+review-loop-workspace/
+skills/review-loop/evals/
