@@ -14,6 +14,7 @@ An iterative review-fix loop that uses three agents with separated concerns to i
 The loop repeats until the Reviewer Agent finds no issues, meaning all changes meet the user's goals and have no defects.
 
 ### When to Use
+
 - After completing code modifications that need quality assurance
 - When the user wants an independent review-fix cycle on their workspace changes
 - When code changes are complex enough to benefit from a fresh-eyes review
@@ -47,11 +48,13 @@ Before starting the review loop, establish what the user is trying to accomplish
 │    → Output: structured findings or PASS               │
 │                                                        │
 │  Step 2: Check result                                  │
-│    → If PASS (no findings): exit loop                  │
+│    → Call loop exit gate (see below)                   │
+│    → If endLoop=true: exit loop                        │
 │                                                        │
 │  Step 3: Main Agent filters findings                   │
 │    → For each finding: accept (reasonable) or reject   │
-│    → If all rejected: exit loop                        │
+│    → Call loop exit gate (see below)                   │
+│    → If endLoop=true: exit loop                        │
 │                                                        │
 │  Step 4: Spawn Dev Agent (read-write)                  │
 │    → Input: accepted findings + goal statement         │
@@ -62,11 +65,37 @@ Before starting the review loop, establish what the user is trying to accomplish
 └────────────────────────────────────────────────────────┘
 ```
 
-The loop terminates when:
-- The Reviewer Agent returns PASS (no findings), or
-- The Main Agent rejects all findings as unreasonable
-
 **Divergence detection**: If findings count increases for 3 consecutive rounds, warn the user that the loop may not be converging and ask whether to continue.
+
+---
+
+### Loop Exit Gate (Mandatory)
+
+The loop exit condition is enforced by a gatekeeper script. You MUST call this script before exiting the loop — do not exit based on your own judgment.
+
+**Script location**: `skills/review-loop/scripts/check_loop.py`
+
+**When to call**: After Step 2 (Reviewer returns) and after Step 3 (Main Agent finishes filtering).
+
+**How to call**:
+```bash
+echo '{"reviewer_result": "PASS", "accepted_count": 0}' | python3 skills/review-loop/scripts/check_loop.py
+```
+
+**Input JSON fields**:
+- `reviewer_result`: `"PASS"` or `"NEEDS_FIXES"`
+- `accepted_count`: integer, number of findings the Main Agent accepted (0 if all rejected)
+
+**Output JSON**:
+```json
+{"endLoop": true, "reason": "Reviewer returned PASS"}
+```
+or
+```json
+{"endLoop": false, "reason": "3 findings accepted, continuing loop"}
+```
+
+**Exit rule**: Only exit the loop when `endLoop` is `true`. If `endLoop` is `false`, proceed to the next step.
 
 ---
 
@@ -128,7 +157,7 @@ One to two sentences about the overall state of the changes.
 ### Step 2: Check Result
 
 Parse the Reviewer Agent's output:
-- If `Result: PASS` → the loop is done. Proceed to Phase 3.
+- If `Result: PASS` → call the loop exit gate with `{"reviewer_result": "PASS", "accepted_count": 0}`. If `endLoop=true`, proceed to Phase 3.
 - If `Result: NEEDS_FIXES` → extract findings and continue to Step 3.
 
 ### Step 3: Main Agent Filters Findings
@@ -146,7 +175,7 @@ The Main Agent reviews each finding and decides whether it's reasonable. This is
 
 Display the filtering results to the user before spawning the Dev Agent, so the user has visibility into the decisions.
 
-If all findings are rejected → the loop is done. Proceed to Phase 3.
+If all findings are rejected → call the loop exit gate with `{"reviewer_result": "NEEDS_FIXES", "accepted_count": 0}`. If `endLoop=true`, proceed to Phase 3.
 
 ### Step 4: Spawn Dev Agent
 
