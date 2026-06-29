@@ -40,68 +40,80 @@ Before starting the review loop, establish what the user is trying to accomplish
 
 ### Phase 2: Review-Fix Loop
 
-```
-┌─── Loop ──────────────────────────────────────────────┐
-│                                                        │
-│  Step 1: Spawn Reviewer Agent (read-only)              │
-│    → Input: git diff + goal statement + round number   │
-│    → Output: structured findings or PASS               │
-│                                                        │
-│  Step 2: Check result                                  │
-│    → Call loop exit gate (see below)                   │
-│    → If endLoop=true: exit loop                        │
-│                                                        │
-│  Step 3: Main Agent filters findings                   │
-│    → For each finding: accept (reasonable) or reject   │
-│    → Call loop exit gate (see below)                   │
-│    → If endLoop=true: exit loop                        │
-│                                                        │
-│  Step 4: Spawn Dev Agent (read-write)                  │
-│    → Input: accepted findings + goal statement         │
-│    → Output: fix report                                │
-│                                                        │
-│  Step 5: Back to Step 1                                │
-│                                                        │
-└────────────────────────────────────────────────────────┘
-```
+#### Gate Mode Detection
 
-**Divergence detection**: If findings count increases for 3 consecutive rounds, warn the user that the loop may not be converging and ask whether to continue.
+The loop exit conditions are enforced by a gatekeeper. Check Python availability first:
 
----
-
-### Loop Exit Gate (Mandatory)
-
-The loop exit condition is enforced by a gatekeeper script. You MUST call this script before exiting the loop — do not exit based on your own judgment.
-
-**Script location**: `skills/review-loop/scripts/check_loop.py`
-
-**When to call**: After Step 2 (Reviewer returns) and after Step 3 (Main Agent finishes filtering).
-
-**How to call**:
 ```bash
-echo '{"reviewer_result": "PASS", "accepted_count": 0}' | python3 skills/review-loop/scripts/check_loop.py
+python3 --version 2>/dev/null && echo "SCRIPT_MODE" || echo "TEXT_MODE"
 ```
 
-**Input JSON fields**:
-- `reviewer_result`: `"PASS"` or `"NEEDS_FIXES"`
-- `accepted_count`: integer, number of findings the Main Agent accepted (0 if all rejected)
+- **Script mode** (Python available): Use `skills/review-loop/scripts/check_loop.py` to enforce exit conditions with round tracking, findings history, and anti-spoofing — the script rejects self-declared PASS without a real review cycle.
+- **Text mode** (no Python): Follow §Text Fallback Constraints — identical behavior enforced manually.
 
-**Output JSON**:
-```json
-{"endLoop": true, "reason": "Reviewer returned PASS"}
+#### Step 0: Initialize Loop State
+
+The script is stateless — no `--reset` or runtime files. Initialize these values before starting:
+
+**Script mode** — `findings_history = []`, `max_rounds = 10`, `round = 1`.
+**Text mode** — track manually: `round = 1`, `findings_history = []`.
+
+#### Loop Flow
+
 ```
-or
-```json
-{"endLoop": false, "reason": "3 findings accepted, continuing loop"}
+1. Spawn Reviewer Agent (read-only) → findings or PASS
+2. If Reviewer returns PASS → call Loop Exit Gate → if endLoop: exit
+3. If Reviewer returns NEEDS_FIXES → Main Agent filters findings
+4. Call Loop Exit Gate with accepted_count → if endLoop: exit
+5. Spawn Dev Agent or apply fixes directly → increment round → back to Step 1
 ```
 
-**Exit rule**: Only exit the loop when `endLoop` is `true`. If `endLoop` is `false`, proceed to the next step.
+**Divergence detection**: If findings count increases for 3 consecutive rounds, the gate sets `divergenceWarning=true`. Warn the user the loop may not be converging and ask whether to continue.
 
 ---
+
+#### Loop Exit Gate (Mandatory)
+
+Call the gate only when the data needed for a valid decision is available:
+
+- After Step 2 only if the Reviewer returned `PASS`.
+- After Step 3 if the Reviewer returned `NEEDS_FIXES`, because `accepted_count` is known only after filtering.
+
+Only exit the loop when `endLoop` is `true` — the gate is the sole authority on exit decisions.
+
+**Script mode invocation:**
+```bash
+echo '{"reviewer_result":"PASS","accepted_count":0,"findings_count":0,"round":1,"findings_history":[],"max_rounds":10}' | python3 skills/review-loop/scripts/check_loop.py
+```
+
+| Input field | Type | Description |
+|-------------|------|-------------|
+| `reviewer_result` | `"PASS"` or `"NEEDS_FIXES"` | Reviewer's verdict. Any other value is invalid. |
+| `accepted_count` | int | Findings accepted by Main Agent. Use `0` for `PASS` or when all findings were rejected. |
+| `findings_count` | int | Total findings returned by Reviewer this round. Must be `0` for `PASS` and `> 0` for `NEEDS_FIXES`. |
+| `round` | int | Current round number, starting at `1`. The gate rejects round `0` because no Reviewer cycle has happened yet. |
+| `findings_history` | `[int, ...]` | Findings count per round, used for divergence detection. Initialize as `[]` and pass back the value from the previous gate output. |
+| `max_rounds` | int | Maximum review rounds before forced exit. Default `10`. |
+
+Output: `{"endLoop": bool, "reason": str, "verdict": "PASS"|"NEEDS_FIXES"|null, "round": int, "maxRounds": int, "divergenceWarning": bool, "findings_history": [int, ...]}`
+
+**Anti-spoofing**: The script rejects any gate call with `round < 1` — you cannot declare a verdict without actually spawning a Reviewer and completing at least one review round.
+
+**Text mode** — enforce §Text Fallback Constraints manually with identical logic. In text mode, self-declaring a verdict without spawning a Reviewer is equally invalid.
+
+#### Text Fallback Constraints
+
+When Python is unavailable, apply these rules exactly — they match the script's logic:
+
+1. **Input validation**: `reviewer_result` must be `PASS` or `NEEDS_FIXES`; counts must be non-negative integers; `round` must be >= 1.
+2. **PASS exit**: Reviewer returns `PASS` with `findings_count == 0` and `accepted_count == 0` → exit loop, verdict PASS.
+3. **All-rejected exit**: Reviewer returns `NEEDS_FIXES` and all findings are rejected after filtering → exit loop, verdict PASS.
+4. **Divergence**: If findings count strictly increases for 3 consecutive rounds, warn user.
+5. **Counter**: Increment `round` after each complete cycle. Track exactly one `findings_history` entry per round.
 
 ### Step 1: Spawn Reviewer Agent
 
-Spawn a **read-only** agent (subagent_type: `Explore`) with the following prompt structure:
+Spawn an available **read-only review/exploration agent** with the following prompt structure. In CodeBuddy, prefer `code-explorer`; in Claude-style environments, this may be `Explore`. If no read-only subagent is available, perform the review yourself without editing files.
 
 ```
 You are a code reviewer. Your job is to review workspace changes against the user's goals and identify issues.
@@ -157,8 +169,8 @@ One to two sentences about the overall state of the changes.
 ### Step 2: Check Result
 
 Parse the Reviewer Agent's output:
-- If `Result: PASS` → call the loop exit gate with `{"reviewer_result": "PASS", "accepted_count": 0}`. If `endLoop=true`, proceed to Phase 3.
-- If `Result: NEEDS_FIXES` → extract findings and continue to Step 3.
+- If `Result: PASS` → call the **Loop Exit Gate** with `{"reviewer_result": "PASS", "accepted_count": 0, "findings_count": 0, "round": <current_round>}`. If `endLoop=true`, proceed to Phase 3.
+- If `Result: NEEDS_FIXES` → extract findings, count them, and continue to Step 3.
 
 ### Step 3: Main Agent Filters Findings
 
@@ -175,11 +187,11 @@ The Main Agent reviews each finding and decides whether it's reasonable. This is
 
 Display the filtering results to the user before spawning the Dev Agent, so the user has visibility into the decisions.
 
-If all findings are rejected → call the loop exit gate with `{"reviewer_result": "NEEDS_FIXES", "accepted_count": 0}`. If `endLoop=true`, proceed to Phase 3.
+If all findings are rejected → call the **Loop Exit Gate** with `{"reviewer_result": "NEEDS_FIXES", "accepted_count": 0, "findings_count": <total findings this round>, "round": <current_round>}`. If `endLoop=true`, proceed to Phase 3.
 
 ### Step 4: Spawn Dev Agent
 
-Spawn a **general-purpose** agent (has read-write access) with the following prompt structure:
+Spawn an available **read-write development agent** with the following prompt structure. If the host environment has no separate write-capable agent, the Main Agent applies the accepted fixes directly while preserving the same output format.
 
 ```
 You are a developer fixing code review findings. Apply each fix carefully, ensuring you don't break existing functionality.
@@ -209,7 +221,7 @@ For each finding, report:
 After the Dev Agent returns:
 - Record which findings were fixed and which were not.
 - If any findings were reported as "unable-to-fix", show these to the user with the Dev Agent's explanation. The user can decide to skip them or provide guidance.
-- Return to Step 1 for the next review round.
+- Increment `round` by 1, then return to Step 1 for the next review round.
 
 ---
 
