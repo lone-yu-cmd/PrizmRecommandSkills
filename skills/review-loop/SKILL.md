@@ -61,14 +61,30 @@ The script is stateless — no `--reset` or runtime files. Initialize these valu
 #### Loop Flow
 
 ```
-1. Spawn Reviewer Agent (read-only) → findings or PASS
-2. If Reviewer returns PASS → call Loop Exit Gate → if endLoop: exit
-3. If Reviewer returns NEEDS_FIXES → Main Agent filters findings
-4. Call Loop Exit Gate with accepted_count → if endLoop: exit
-5. Spawn Dev Agent or apply fixes directly → increment round → back to Step 1
+1. Spawn Reviewer Agent (read-only, NO worktree) → findings or PASS
+2. Verify workspace root unchanged (no worktree created) → if changed: abort & clean up
+3. If Reviewer returns PASS → call Loop Exit Gate → if endLoop: exit
+4. If Reviewer returns NEEDS_FIXES → Main Agent filters findings
+5. Call Loop Exit Gate with accepted_count → if endLoop: exit
+6. Spawn Dev Agent (read-write, NO worktree) or apply fixes directly
+7. Verify workspace root unchanged → increment round → back to Step 1
 ```
 
 **Divergence detection**: If findings count increases for 3 consecutive rounds, the gate sets `divergenceWarning=true`. Warn the user the loop may not be converging and ask whether to continue.
+
+#### No Worktree (Mandatory)
+
+**All agents in this loop MUST operate directly in the current workspace — NEVER create or switch to a git worktree.**
+
+Worktrees cause the Reviewer to inspect a stale or empty tree (missing the user's uncommitted changes), the Dev Agent to write fixes into an isolated directory the user can't see, and the Main Agent to lose track of where changes actually landed. This breaks the entire loop.
+
+When spawning any subagent (Reviewer or Dev), you MUST:
+
+1. **Do NOT pass any worktree flag or parameter** to the Task/subagent invocation. Do not set `cwd`, `workdir`, or any directory option that points outside the current workspace.
+2. **Explicitly instruct the subagent in its prompt** (see the prompt templates below) that it is forbidden from running `git worktree add`, `git worktree`, or any command that creates/enters a separate working tree.
+3. **Verify workspace integrity after each agent returns**: run `git rev-parse --show-toplevel` and confirm it points at the original workspace root. If a worktree was created, abort, remove it with `git worktree remove --force <path>`, and re-run that step in-place.
+
+If the host environment auto-spawns subagents in a worktree by default, override that behavior by setting the subagent's working directory to the current workspace root before it starts.
 
 ---
 
@@ -115,8 +131,13 @@ When Python is unavailable, apply these rules exactly — they match the script'
 
 Spawn an available **read-only review/exploration agent** with the following prompt structure. In CodeBuddy, prefer `code-explorer`; in Claude-style environments, this may be `Explore`. If no read-only subagent is available, perform the review yourself without editing files.
 
+> ⚠️ **No worktree**: Do not pass any worktree/cwd override to the Task invocation. The subagent must run in the current workspace so it sees the user's actual diff. The prompt below includes a hard prohibition on `git worktree` — do not remove it.
+
 ```
 You are a code reviewer. Your job is to review workspace changes against the user's goals and identify issues.
+
+## CRITICAL: No Worktree
+You MUST review changes in the current workspace directly. Do NOT run `git worktree add`, `git worktree`, or any command that creates or switches to a separate working tree. Do NOT change the working directory. All `git diff` / `git status` commands must run against the workspace you were spawned in — that is where the user's uncommitted changes live.
 
 ## User Goal
 {goal_statement}
@@ -193,8 +214,13 @@ If all findings are rejected → call the **Loop Exit Gate** with `{"reviewer_re
 
 Spawn an available **read-write development agent** with the following prompt structure. If the host environment has no separate write-capable agent, the Main Agent applies the accepted fixes directly while preserving the same output format.
 
+> ⚠️ **No worktree**: Do not pass any worktree/cwd override to the Task invocation. The Dev Agent must write fixes into the current workspace so the next Reviewer round can verify them. The prompt below includes a hard prohibition on `git worktree` — do not remove it.
+
 ```
 You are a developer fixing code review findings. Apply each fix carefully, ensuring you don't break existing functionality.
+
+## CRITICAL: No Worktree
+You MUST apply fixes directly in the current workspace. Do NOT run `git worktree add`, `git worktree`, or any command that creates or switches to a separate working tree. Do NOT change the working directory. The Reviewer found issues in this workspace's changes — your fixes must land here so the next review round can see them.
 
 ## User Goal
 {goal_statement}
