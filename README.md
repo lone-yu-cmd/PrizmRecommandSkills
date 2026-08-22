@@ -61,6 +61,24 @@ Evaluate skill effectiveness through test runs, grading, benchmarking, and A/B c
 /skill-auditor <path-to-skill> [--eval | --compare | --trigger | --grade-only]
 ```
 
+### prizm-video-analyzer
+
+Extract and summarize what a video actually says from a Bilibili, Douyin, YouTube, Xiaohongshu, or TikTok URL.
+
+**What it does:**
+- Prefer existing captions when the platform has them
+- If the site blocks anonymous download (Bilibili HTTP 412), retry with browser cookies
+- If there is no caption track (danmaku does not count), download audio and transcribe with Whisper
+- Extract keyframes so on-screen terms can correct ASR errors
+- Produce a grounded summary; do not guess from the title
+
+**Usage:**
+```
+帮我总结这个视频讲了什么：https://www.bilibili.com/video/BVxxxx
+```
+
+Requires `yt-dlp`, `ffmpeg`, and (when there are no captions) `faster-whisper`.
+
 ## License
 
 MIT

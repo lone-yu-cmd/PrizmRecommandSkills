@@ -1,0 +1,23 @@
+{
+  "skill_name": "prizm-video-analyzer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我总结这个B站视频讲了什么：https://www.bilibili.com/video/BV17J3B6PEGK/",
+      "expected_output": "A Chinese summary of the 10 RAG strategies from the video (chunking, embeddings, Graph RAG, hybrid search, rerank, Agentic RAG, Adaptive Routing), not a guess from the title. Mentions speech came from Whisper if no captions, and uses on-screen terms to correct ASR errors.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "这个YouTube链接内容是啥，挑重点就行 https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "expected_output": "Uses platform captions when available instead of downloading audio first. Returns a content summary grounded in transcript/frames, not only the video title. Does not paste the full transcript unless asked.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "分析下这条抖音里具体说了什么（没有字幕那种）https://v.douyin.com/",
+      "expected_output": "Treats missing captions as expected, downloads audio, runs Whisper, and summarizes spoken content. If 412/parse failure occurs, retries with browser cookies rather than inventing the video content.",
+      "files": []
+    }
+  ]
+}
