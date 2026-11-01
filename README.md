@@ -18,6 +18,24 @@ npx skills add lone-yu-cmd/PrizmRecommandSkills -y -g
 
 ## Available Skills
 
+### prompt-scope
+
+Scope a brief, ambiguous, or underspecified request into a complete one before acting. It reconstructs intent, tests premises, classifies the scenario, expands the request across scenario-specific dimensions and blind spots, then either runs a read-only preflight or compiles the request into one clearly sectioned, execution-ready prompt.
+
+**What it does:**
+- **Preflight mode**: explicit scope contract → evidence → work; pauses before risky writes and states what was not checked
+- **Scope contract**: names the decision, in/out of scope, minimum evidence, and stop condition; no fixed Quick/Standard/Deep levels
+- **Keeps the AI's own retrieval path**: the protocol is a scaffold, not a cage; a material finding outside the original scope is surfaced under "其他观察 / 新发现", not dropped
+- **Compile mode**: produces one clearly sectioned, copy-ready prompt with criteria, evidence requirements, acceptance, and guardrails; no multiple variants and no table/pipe formatting inside the prompt
+- Covers layered docs, design review, logic closure, requirements, implementation, debugging, test adequacy, contract changes, migration/release, decisions, writing, and AI asset review
+- Skips trivial single-step tasks; supports "直接做" without dropping the evidence or safety gate
+
+**Usage:**
+```
+/prompt-scope 检查一下 L1 层的内容，设计是否合理、逻辑是否闭环、上下层是否呼应。
+帮我优化这个 prompt：修复登录 bug。
+```
+
 ### skill-optimizer
 
 Audit and refactor SKILL.md files against [skill-creator](https://github.com/anthropics/claude-code) writing standards.
