@@ -36,6 +36,24 @@ Scope a brief, ambiguous, or underspecified request into a complete one before a
 帮我优化这个 prompt：修复登录 bug。
 ```
 
+### review-loop
+
+Iterative review-fix loop built on a claim ledger rather than agent voting. A read-only Reviewer returns claims with evidence, the main agent adjudicates each claim into accepted / rejected / waived / backlog under a severity budget, a Dev applies the accepted ones, and the project's own verification command runs every round.
+
+**What it does:**
+- **Claim-level adjudication**: every claim has a stable identity (`location | dimension | problem`), so a re-raised claim is detected instead of being counted as progress
+- **Severity budget**: critical/high get adjudicated, medium/low go to a backlog file — a ten-round fuse cannot be consumed by nitpicking
+- **State outside the context**: the ledger, per-round reports, and backlog live in a temp state directory, so the conversation carries only a digest and the reviewed diff never contains loop artifacts
+- **Deterministic exit**: a gate script decides between PASS / PASS_UNVERIFIED / VERIFICATION_FAILED / ALL_REJECTED / NEEDS_FIXES; a failing check outranks a reviewer's PASS
+- **Blind review**: the Reviewer is not told the round number or that previous fixes were "verified", which removes the usual capitulation pressure
+- Never commits, stashes, resets, or creates worktrees; the working tree is left dirty for the user
+
+**Usage:**
+```
+/review-loop
+review loop 我这堆未提交的改动，拒绝意见要带证据
+```
+
 ### skill-optimizer
 
 Audit and refactor SKILL.md files against [skill-creator](https://github.com/anthropics/claude-code) writing standards.
