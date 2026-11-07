@@ -55,7 +55,7 @@ Rewrite one supplied draft prompt into a single execution-ready prompt — and s
 
 ### review-loop
 
-Iterative review-fix loop built on a claim ledger rather than agent voting. A read-only Reviewer returns claims with evidence, the main agent adjudicates each claim into accepted / rejected / waived / backlog under a severity budget, a Dev applies the accepted ones, and the project's own verification command runs every round.
+Iterative review-fix loop built on a claim ledger rather than agent voting. A read-only Reviewer returns claims with evidence, the main agent adjudicates each claim into accepted / rejected / waived / backlog under a severity budget and applies the accepted ones itself, and the project's own verification command runs every round.
 
 **What it does:**
 - **Claim-level adjudication**: every claim has a stable identity (`location | dimension | problem`), so a re-raised claim is detected instead of being counted as progress

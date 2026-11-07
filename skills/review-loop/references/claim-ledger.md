@@ -19,12 +19,12 @@ $REVIEW_LOOP_DIR/
   round-N.patch       # patch since the previous snapshot, sent to the reviewer
   backlog.md          # medium/low claims parked outside the loop
   round-1.reviewer.md # raw Reviewer output, append-only
-  round-1.dev.md      # raw Dev output
+  round-1.fix.md      # the main agent's fix record for the round
   round-2.reviewer.md
   ...
 ```
 
-The Reviewer and the Dev write nothing here. They return text; the main agent files it.
+The Reviewer writes nothing here; it returns text, and the main agent files that text plus its own fix record.
 
 ## state.json
 
