@@ -16,6 +16,7 @@ $REVIEW_LOOP_DIR/
   changes.patch       # pre-loop `git diff HEAD`
   status.txt          # pre-loop `git status --porcelain`
   seen-snapshot       # stash-create id of the state the reviewer last read
+  seen-untracked      # untracked paths already sent to the reviewer
   round-N.patch       # patch since the previous snapshot, sent to the reviewer
   backlog.md          # medium/low claims parked outside the loop
   round-1.reviewer.md # raw Reviewer output, append-only
