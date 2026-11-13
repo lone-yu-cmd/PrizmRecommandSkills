@@ -1,6 +1,6 @@
 # Writing Standards Reference
 
-Standards for writing skill content, extracted from skill-creator's guidelines. Load this file when the enhancement involves adding or expanding SKILL.md sections or examples.
+Standards for writing skill content. Load this file when the enhancement involves adding or expanding SKILL.md sections or examples.
 
 ## Table of Contents
 1. [Progressive Disclosure](#1-progressive-disclosure)
@@ -186,7 +186,7 @@ A good description has three components:
 3. **Keywords** — Domain-specific terms users would naturally say
 
 ### Combat undertriggering
-Per skill-creator: descriptions should be slightly "pushy." Claude tends to undertrigger skills — not using them when they'd be useful. Include trigger phrases that cover near-miss scenarios:
+Descriptions should be slightly "pushy": models undertrigger skills — they solve a request themselves instead of consulting one that would help. Include trigger phrases that cover near-miss scenarios:
 
 "Use this skill whenever someone wants to add content to a skill, even if they just say 'this skill needs more' or describe a specific section they want without using the word 'enhance'."
 

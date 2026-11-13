@@ -113,7 +113,7 @@ and pass it the outputs from Step 4.
 Scripts handle deterministic or repetitive operations — tasks that benefit from being written once and executed consistently rather than re-derived by the model each time.
 
 ### When to create a script
-The clearest signal: if the model would independently write similar helper code across multiple test cases. Per skill-creator: "if all test cases resulted in the subagent writing a similar helper script, that's a strong signal the skill should bundle that script."
+The clearest signal: if the model would independently write similar helper code across multiple test cases, that helper belongs in the skill's `scripts/` directory instead of being reinvented on every run.
 
 Also create scripts for:
 - Data transformations with fixed logic

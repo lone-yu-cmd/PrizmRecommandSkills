@@ -11,6 +11,8 @@ JSON schemas used by skill-auditor. Load this file when you need to create or va
 6. [comparison.json](#comparisonjson)
 7. [analysis.json](#analysisjson)
 8. [feedback.json](#feedbackjson)
+9. [trigger-queries.json](#trigger-queriesjson)
+8. [feedback.json](#feedbackjson)
 
 ---
 
@@ -319,3 +321,24 @@ User feedback from the viewer. Located at `<workspace>/iteration-<N>/feedback.js
 ```
 
 Empty feedback means the user was satisfied with that test case.
+
+**`run_id` format.** `build_review.py` writes `<case-directory>/<configuration>`, for example `error-recovery-flow/with_skill`. Match that when reading feedback back, or write the same shape if feedback arrives from elsewhere.
+
+---
+
+## trigger-queries.json
+
+Input for the trigger measurement mode. A flat array, saved next to the workspace rather than inside the skill.
+
+```json
+[
+  {"query": "my boss sent Q4 sales final v2.xlsx and wants margin in column E", "should_trigger": true},
+  {"query": "convert this docx to markdown so I can diff it", "should_trigger": false}
+]
+```
+
+**Fields:**
+- `query`: a request a real user would type — paths, column names, casual phrasing, typos included
+- `should_trigger`: whether the description should make the agent consult this skill
+
+**Composition:** 8-10 positives, 8-10 negatives, and the negatives must be near-misses — requests that share the skill's keywords but need a different job. Obviously unrelated negatives produce a meaningless perfect score.

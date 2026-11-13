@@ -1,20 +1,20 @@
 ---
 name: "skill-enhancer"
-description: "Supplement existing skills with new content following skill-creator best practices. Use this skill whenever someone wants to add a new section to a skill, supplement a skill with references or agents or scripts, expand a skill's capabilities, add examples or error handling, enrich a skill's content, or fill in missing parts of a skill. Triggers on: 'enhance skill', 'add to skill', 'supplement skill', 'expand skill', 'skill needs more', 'enrich skill content', 'add section to skill', 'complete this skill'."
+description: "Supplement an existing skill with new content: sections, references, agents, scripts, examples, error handling. Additive only — it inserts what is missing and never rewrites or deletes what is already there. Use this skill whenever someone wants to add a section to a skill, supplement a skill with reference docs, agents, or scripts, expand a skill's capabilities, add examples or error handling, enrich a skill, or fill in a gap someone else flagged. Triggers on: 'enhance skill', 'add to skill', 'supplement skill', 'expand skill', 'skill needs more', 'enrich skill content', 'add section to skill', 'add examples to this skill', 'complete this skill'."
 ---
 
 # Skill Enhancer
 
-Supplement existing skills with new content — sections, references, agents, scripts, examples — guided by skill-creator writing standards. The user says what they want to add; this skill figures out the best way to do it according to established norms, then executes after confirmation.
+Supplement an existing skill with content it does not have yet — sections, references, agents, scripts, examples. The user says what to add; this skill works out where the content belongs and what shape it should take, then writes it after confirmation.
 
-This skill is strictly additive. It does not refactor, remove, or reorganize existing content — that's skill-optimizer's job. It does not diagnose problems — that's skill-reviewer's job. It adds what's missing or insufficient, following the same standards those tools enforce.
+This skill is strictly additive. It inserts content that is missing; it does not refactor, remove, reorganize, or rewrite what is already there, and it does not diagnose problems. Whether a gap is worth filling is the user's call, or the call of whoever flagged it — this skill's job starts once the answer is "add this".
 
 ### When to Use
 - "Add error handling to this skill", "supplement the evaluation section"
 - "This skill needs a grader agent", "add reference docs"
 - "Expand the examples", "add a scripts/ directory"
 - "The skill is missing X, can you add it?"
-- After skill-reviewer identifies gaps, to fill them properly
+- Filling a gap someone else identified
 - When extending a skill's capabilities with new content
 
 ### `/skill-enhancer` \<path-to-skill\> \<what to add\>
@@ -23,9 +23,9 @@ Accepts a skill directory path or a direct path to a SKILL.md file, plus a descr
 
 **Examples:**
 ```
-/skill-enhancer skills/skill-reviewer "add a grader agent for scoring audit findings"
-/skill-enhancer skills/skill-auditor "add detailed examples to the evaluation flow"
-/skill-enhancer skills/skill-optimizer "supplement error handling for each refactoring step"
+/skill-enhancer skills/report-builder "add a Fix Suggestions section after Output Format"
+/skill-enhancer skills/data-validator "add an agents/schema-checker.md"
+/skill-enhancer skills/changelog-writer "supplement 2-3 before/after examples in the rewrite step"
 ```
 
 ---
@@ -44,7 +44,7 @@ Read the reference files from this skill's directory based on what the user want
 - **Adding reference files, agents, or scripts** → read `references/structure-patterns.md`
 - **Any enhancement** → read `references/enhancement-checklist.md` (always load this)
 
-These references contain the skill-creator standards that guide how content should be written and organized. Every recommendation this skill makes traces back to a specific standard in these files.
+These references hold the standards that decide where new content goes and how it is written — loading level, line budget, wording, file structure. Every recommendation this skill makes traces back to a specific rule in one of them, so the author can see why the shape was chosen instead of taking it on trust.
 
 ### Step 3: Classify the enhancement type
 
@@ -87,7 +87,7 @@ Generate a plan that shows exactly what will change. The plan has four parts:
 | # | Change Type | File Path | Description |
 |---|------------|-----------|-------------|
 | 1 | Modify | SKILL.md | Add "Error Recovery" section after Phase 2 |
-| 2 | Create | references/error-recovery.md | Detailed error table and recovery procedures |
+| 2 | Create | references/<topic>.md | Detailed error table and recovery procedures |
 | 3 | Create | agents/validator.md | Validation subagent instructions |
 ```
 
@@ -116,7 +116,7 @@ Generate all new content according to the confirmed plan. Follow the writing sta
 **For reference files:**
 - Include a table of contents if the file exceeds 300 lines
 - Write clear section headers so the model can navigate to the relevant part
-- Reference the file from SKILL.md with guidance on *when* to load it — not just a path, but the condition: "Read `references/error-recovery.md` when a validation error occurs in Step 3"
+- Reference the file from SKILL.md with guidance on *when* to load it — not just a path, but the condition: "Read `references/<topic>.md` when a validation error occurs in Step 3"
 
 **For agent files:**
 - Read `references/structure-patterns.md` §3 (Agent Files) for the standard structure and self-containment requirements
@@ -154,44 +154,53 @@ Write all confirmed changes. For new script files, set appropriate permissions.
 
 ## Phase 4: Verify
 
-Quick verification pass after applying changes. Check five things:
+Two passes. The first checks that the files agree with each other; the second checks whether the skill still does its job. They answer different questions, and the first one passing says nothing about the second.
+
+### Structural pass
 
 1. **Reference integrity** — Every file path mentioned in SKILL.md exists on disk. Every new reference/agent/script file is pointed to from SKILL.md with a "when to load" condition.
 2. **No new duplication** — The added content doesn't repeat information already present in SKILL.md or other reference files.
 3. **Line budget** — SKILL.md total line count is within the 500-line budget.
 4. **Writing style** — New content uses imperative form, explains rationale for important guidance, and avoids excessive MUST/NEVER directives.
-5. **Description update** — If the enhancement changes the skill's capabilities (adding a new mode, new output type, new trigger scenario), the description field may need updating. Read `references/enhancement-checklist.md` §7 (Description Update Decision) for the decision criteria. Show the current description and suggest additions — but don't modify it without user confirmation, because description changes affect triggering behavior.
+5. **Insert-only** — The diff contains no modified or deleted pre-existing lines. If it does, the author's approval did not cover them.
+6. **Description update** — If the enhancement changes the skill's capabilities (adding a new mode, new output type, new trigger scenario), the description field may need updating. Read `references/enhancement-checklist.md` §7 (Description Update Decision) for the decision criteria. Show the current description and suggest additions — but don't modify it without user confirmation, because description changes affect triggering behavior.
 
-Output a brief verification report:
+### Behavior pass
+
+A pass covering files and line counts cannot tell you whether the new section actually helps, because nothing ran. So:
+
+- If the target skill has `evals/evals.json`, run those prompts against the enhanced skill and report pass rate per case — before and after if a baseline exists.
+- If it has none, the verdict line says **behavior unverified**. Do not let six PASS rows imply the addition works; they only say the files are consistent.
 
 ```markdown
 # Enhancement Verification
-- Reference integrity: [PASS/FAIL] — details if FAIL
-- No new duplication: [PASS/FAIL] — details if FAIL
-- Line budget: N/500 [PASS/FAIL]
-- Writing style: [PASS/FAIL] — details if FAIL
-- Description update: [needed/not needed] — suggestion if needed
+- Reference integrity: PASS/FAIL — details if FAIL
+- No new duplication: PASS/FAIL — details if FAIL
+- Line budget: N/500 PASS/FAIL
+- Writing style: PASS/FAIL — details if FAIL
+- Insert-only: PASS/FAIL — list any modified or deleted lines
+- Description update: needed / not needed — suggestion if needed
+- Behavior: pass rate N/N (before N/N) — or "behavior unverified, no evals/ found"
 ```
 
 If any check fails, note what needs fixing and offer to fix it.
 
 ---
 
-## Boundary with Other Skills
+## Additive boundary, and what to do when it breaks
 
-This skill occupies a specific niche in the skill quality toolkit. Understanding the boundaries prevents overlap and helps choose the right tool:
+This skill inserts. It does not rewrite, restructure, delete, or relocate existing content — even when the insertion makes an existing line wrong, which is the case that actually happens.
 
-- **skill-reviewer** diagnoses problems (read-only). It may identify gaps that skill-enhancer can fill — the two work well in sequence.
-- **skill-optimizer** refactors and restructures existing content. If the user wants to improve what's already written, use optimizer. If they want to add what's not there yet, use enhancer.
-- **skill-auditor** tests whether a skill works at runtime. After enhancing a skill, auditor can verify the additions actually help.
+When the requested addition cannot land without editing an existing line (a new rule contradicting an old one, a new section that makes an old section redundant, a naming change that invalidates a pointer):
 
-The typical workflow when improving a skill: **reviewer** → **enhancer** → **optimizer** → **auditor**. Each tool handles a different concern, and the user can enter at any point.
+1. Stop before writing.
+2. Name the conflicting line and quote it.
+3. Offer the two real options: keep the existing line and weaken the addition, or replace the existing line.
+4. Let the author choose, and record the choice in the plan.
 
----
+Silently editing the conflicting line is the failure mode: the author asked for an addition, reviews a diff expecting inserts, and approves a deletion without noticing. When a request is mostly rewriting rather than adding, say so in one line and stop — the deliverable would not be an enhancement.
 
-## Resource Reference
-
-Writing standards and structural patterns are in the `references/` directory. Load them during Phase 1 based on what the user wants to add — they contain the skill-creator standards that back every recommendation.
+Writing standards and structural patterns are in the `references/` directory. Load them during Phase 1 based on what the user wants to add — they back every recommendation this skill makes.
 
 - `references/writing-standards.md` — How to write skill content: progressive disclosure, line budgets, writing style, examples
 - `references/structure-patterns.md` — How to organize skill directories: reference files, agents, scripts, assets

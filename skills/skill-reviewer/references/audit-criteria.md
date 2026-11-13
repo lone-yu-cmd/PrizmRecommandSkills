@@ -1,6 +1,6 @@
 # Audit Criteria Reference
 
-Detailed rubrics for each audit dimension. Load this file at the start of Phase 1 diagnosis.
+Detailed rubrics for each audit dimension. Load this file at Step 2 of the audit process.
 
 ## Table of Contents
 1. [Body Size](#1-body-size)
@@ -93,7 +93,7 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 ## 6. Description Triggering
 
-**What to measure**: Whether the `description` frontmatter field effectively communicates both WHAT the skill does and WHEN to use it. Per skill-creator guidelines, descriptions should be slightly "pushy" to combat undertriggering.
+**What to measure**: Whether the `description` frontmatter field effectively communicates both WHAT the skill does and WHEN to use it. Descriptions should lean slightly pushy, because models undertrigger skills: they solve a simple request without consulting one even when the description matches.
 
 **Warning threshold**: Description only describes capability ("Generates a report") without any trigger context ("Use when...", "Triggers on...").
 
@@ -146,7 +146,7 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 ## 9. Frontmatter Completeness
 
-**What to measure**: Whether the YAML frontmatter is well-formed and contains all required fields per skill-creator standards.
+**What to measure**: Whether the YAML frontmatter is well-formed and contains all required fields of the skill format.
 
 **Error threshold**: Missing `name` or `description` field — these are required for the skill to be recognized and triggered.
 
@@ -166,7 +166,7 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 ## 10. Script & Asset Health
 
-**What to measure**: Health of the `scripts/` and `assets/` directories, complementing D7's focus on `references/`.
+**What to measure**: Health of the `scripts/` and `assets/` directories, complementing the `reference-health` dimension's focus on `references/`.
 
 **Sub-check A — Script executability**: Scripts in `scripts/` that are referenced by SKILL.md but lack execute permissions or have syntax issues.
 - Warning threshold: A `.sh` file without execute permission. A `.py` file with a syntax error detectable by `python -m py_compile`.
@@ -184,7 +184,7 @@ Detailed rubrics for each audit dimension. Load this file at the start of Phase 
 
 ## 11. Safety Patterns
 
-**What to measure**: Lightweight scan for patterns that violate skill-creator's "Principle of Lack of Surprise" — a skill's contents should not surprise the user in their intent.
+**What to measure**: Lightweight scan for patterns that violate the lack-of-surprise principle — a skill's contents should not surprise the user in their intent.
 
 **Warning threshold**: Any of the following patterns appearing in SKILL.md, reference files, or scripts:
 - Destructive shell commands: `rm -rf`, `mkfs`, `dd if=`, `> /dev/sd`

@@ -1,141 +1,124 @@
 ---
 name: "skill-reviewer"
-description: "Static audit of SKILL.md files against skill-creator writing standards. Use this skill whenever someone wants to review skill quality, check a skill's health, audit a skill before publishing, verify a skill follows best practices, or diagnose issues with a skill's structure, description, or instructions. Triggers on: 'review skill', 'audit skill', 'check skill quality', 'skill health check', 'diagnose skill', 'is this skill well-written', 'skill lint'."
+description: "Static, read-only audit of a skill's SKILL.md and bundled files, producing a severity-ranked report without editing anything. Covers 17 dimensions: body size, progressive disclosure, conditional content, redundancy, instruction style, description triggering, reference/script health, safety, examples, and readability. Use this skill whenever someone asks to review, audit, lint, inspect, or diagnose a skill; asks whether a skill is well-written or follows best practices; or wants a documented quality report before publishing. Triggers on: 'review skill', 'audit skill', 'skill lint', 'skill health check', 'check skill quality', 'is this skill well-written', 'diagnose this skill'. This skill reports only — it never edits, restructures, or rewrites files."
 ---
 
 # Skill Reviewer
 
-Read-only static audit of any skill against skill-creator writing standards. Evaluates 17 dimensions — body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, safety patterns, and more — and produces a diagnostic report without modifying any files.
+Read-only audit of one skill directory. Reads the skill, judges it against 17 fixed dimensions, and returns a severity-ranked report.
 
-The audit criteria come from skill-creator's own guidelines — this skill doesn't invent new rules, it enforces the existing ones.
+Two things it deliberately does not do, because doing them silently is what makes audit reports untrustworthy: it never writes to the target skill, and it never claims a skill behaves well — only that its text is sound. Structure and behavior are different questions, and this skill answers one of them.
 
-### When to Use
-- "Review this skill", "audit skill quality", "skill health check"
-- Check if a skill follows skill-creator best practices
-- Before publishing or sharing a skill
-- After major edits to a skill, as a quality gate
+### When to use
+
+- "Review this skill", "audit it", "is it well-written", "lint it"
+- A check before publishing or handing a skill to someone else
+- A check after a large edit, to see what the edit broke structurally
 - Diagnosing why a skill triggers poorly or feels bloated
-- Feeding results into skill-optimizer for automated refactoring
 
-### `/skill-reviewer` \<path-to-skill-directory\> [--dimensions N,N,...]
+### Invocation
 
-Accepts either a skill directory path or a direct path to a SKILL.md file.
-
-`--dimensions`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all 17 dimensions.
+The user gives a skill directory or a path to a SKILL.md, and may optionally name the dimensions to run. Naming dimensions is natural language, not flags: "just check the description and the reference health" runs `description-triggering` and `reference-health` only. With no names, run all 17.
 
 ---
 
-## Audit Process
+## Process
 
-#### Step 1: Locate and load target skill
+### Step 1 — Load the target
 
-Resolve the target path to find SKILL.md. Read it fully. Also read all files under the skill's `references/`, `assets/`, and `scripts/` directories (if they exist) to understand the full skill structure.
+Resolve the path to its SKILL.md and read it fully. Then read every file under the target's `references/`, `scripts/`, `assets/`, and `agents/` directories if they exist — a body that looks clean can be an index pointing at four orphaned files, and you cannot see that from SKILL.md alone.
 
-#### Step 2: Load audit criteria
+Record: total lines, bucket sizes, list of every file with line counts, and every path the body mentions.
 
-Read `references/audit-criteria.md` from this skill's directory (skill-reviewer's own references, not the target skill's). This contains the detailed rubrics for each dimension — thresholds, detection methods, false positive guidance.
+### Step 2 — Load the rubrics
 
-#### Step 3: Run 17-dimension audit
+Read this skill's `references/audit-criteria.md`. It carries the per-dimension thresholds, detection methods, and false-positive guidance. The dimension list below says what to look at; the reference says when it counts as a finding.
 
-Evaluate the target skill against these dimensions (detailed criteria in the reference file):
+### Step 3 — Audit the 17 dimensions
 
-1. **Body size** — line count vs 500-line budget
-2. **Progressive disclosure** — is content at the right loading level? Flow-control logic belongs in SKILL.md body; procedural details (error tables, format specs, sub-procedures > 15 lines) belong in references/; deterministic operations belong in scripts/
-3. **Conditional content** — low-frequency content loading unconditionally; domain-variant branches that should be separate reference files
-4. **Internal redundancy** — repeated content across sections, description/body overlap, content duplicated between SKILL.md and reference files
-5. **Instruction style** — MUST/NEVER overuse vs explaining rationale; over-specificity/overfitting of instructions to narrow examples
-6. **Description triggering** — pushy enough? covers what + when-to-use? consistent with body's "When to Use" section? keyword coverage of core domain terms?
-7. **Reference file health** — oversized files without TOC, orphan files, broken references (including scripts/ and assets/ paths)
-8. **Example effectiveness** — helpful vs token-consuming; realistic input/output pairs vs trivially obvious cases
-9. **Frontmatter completeness** — required fields present (name, description), YAML well-formed, name matches directory
-10. **Script & asset health** — executability, orphan detection, Python package structure
-11. **Safety patterns** — destructive commands, remote code execution, data exfiltration patterns
-12. **Diagram effectiveness** — workflow descriptions using ASCII tree format instead of LLM-friendly numbered lists
-13. **Visual noise** — decorative markdown, emoji, and HTML styling that wastes tokens without adding semantic value
-14. **Semantic referencing** — positional references ("see above") instead of named anchors ("see §Phase 2 Step 3")
-15. **Heading hierarchy** — heading nesting deeper than 4 levels, increasing LLM context tracking burden
-16. **Information chunking** — dense paragraphs (100+ words) and wide tables (5+ columns) that hinder token-level parsing
-17. **Pronoun clarity** — ambiguous pronouns ("it", "this") with unclear referents that LLMs may misresolve
+Use the slug, not a number, when you cite a dimension in the report — numbers shift the moment someone inserts a dimension, and an author reading "D7" has to go count headings.
 
-If `--dimensions` was specified, run only the listed dimensions.
+1. `body-size` — line count against the 500-line budget
+2. `progressive-disclosure` — is each block at the right loading level: flow control in the body, procedural detail in `references/`, deterministic work in `scripts/`
+3. `conditional-content` — low-frequency content loading unconditionally; framework/platform branches that should be one reference file each
+4. `redundancy` — the same concept in two sections, body repeating the description, body and reference overlapping
+5. `instruction-style` — MUST/NEVER density without rationale, imperative form, over-specific rules that stop the model from generalizing, contradictions
+6. `description-triggering` — does the description state what and when, is it pushy enough, does it cover the body's "when to use" scenarios and core domain terms
+7. `reference-health` — files over 300 lines without a table of contents, orphans, paths in the body that do not exist
+8. `examples` — realistic input/output pairs versus token-heavy demonstrations of the obvious
+9. `frontmatter` — required fields present, YAML parses, `name` matches the directory
+10. `script-health` — executability, orphaned scripts, Python packages missing `__init__.py`
+11. `safety` — destructive commands, remote code execution, exfiltration patterns, unguarded writes
+12. `diagram` — workflow rendered as ASCII trees where a numbered list would carry the same meaning
+13. `visual-noise` — emoji, decorative bold, HTML, separator art that costs tokens without adding meaning
+14. `referencing` — "see above" instead of "see §Phase 2 Step 3"
+15. `heading-depth` — headings nested deeper than four levels
+16. `chunking` — dense 100+ word paragraphs, tables wide enough that column alignment is lost
+17. `pronoun-clarity` — "it" and "this" with more than one plausible referent
 
-For each finding, assign a severity:
-- **error**: blocks the skill's effectiveness, should fix
-- **warning**: degrades quality, recommend fixing
-- **info**: minor improvement opportunity
-- **style**: subjective suggestion, requires human judgment
+Severity ladder, applied consistently:
 
-#### Step 4: Generate diagnostic report
+- **error** — the skill cannot work as written (broken path, mismatched name, contradicting instructions)
+- **warning** — it works but degrades: wasted context, unreliable triggering, instructions the model will misread
+- **info** — an improvement worth making but not worth blocking on
+- **style** — subjective; the author decides
 
-Output the report to conversation using the format in **Output Format** below. This is a read-only operation — do NOT write to any file or modify the target skill.
+When `audit-criteria.md` says a case is a common false positive, drop the finding. A report full of noise teaches the author to ignore reports.
 
----
+### Step 4 — Write the report
 
-## Output Format
+Read-only: no file is created or modified, including no report file. Deliver in conversation. Three data columns, not five — the rubric that flags wide tables applies to this template too.
 
 ```markdown
 # Skill Review Report
-Skill: <name>
-Path: <absolute-path>
-Lines: N (budget: 500)
+Skill: <name> ・ Path: <absolute path> ・ Lines: N/500 ・ Files: N
 
 ## Findings
 
-| # | Dimension | Severity | Finding | Location |
-|---|-----------|----------|---------|----------|
-| 1 | Body size | warning | 413 lines — approaching 500-line budget | SKILL.md |
-| 2 | Prog. disclosure | error | §Error Recovery (67 lines) is procedural detail, candidate for references/ | SKILL.md L345-411 |
-| 3 | Cond. content | warning | 3 domain branches (React/Vue/Angular) each >20 lines — candidate for domain-variant pattern | SKILL.md L120-195 |
-| 4 | Redundancy | warning | Resume table appears in both §Error Recovery and §Resume Support | SKILL.md L398, L462 |
-| 5 | Instr. style | warning | "ALWAYS use report_final.docx" — over-specific, should generalize to match user's input | SKILL.md L47 |
-| 6 | Desc. triggering | warning | "When to Use" lists "before publishing" but description doesn't mention publishing | SKILL.md frontmatter |
-| 7 | Ref. health | error | references/planning-guide.md — 361 lines, no TOC | references/ |
-| 8 | Examples | info | No examples for multi-step workflow — consider adding 1-2 concise examples | SKILL.md |
-| 9 | Frontmatter | error | `name` field is "my-skill" but directory is "data-processor" | SKILL.md frontmatter |
-| 10 | Script health | warning | scripts/transform.sh lacks execute permission | scripts/ |
-| 11 | Safety | warning | `rm -rf $OUTPUT_DIR` without path validation | scripts/cleanup.sh L12 |
-| ... | | | | |
+| Finding | Evidence | Severity |
+|---------|----------|----------|
+| Body is 413 lines with a 67-line error-recovery section inlined | SKILL.md L345-411 | warning |
+| Description omits "before publishing" although §When to use lists it | SKILL.md frontmatter | warning |
+| `name` is "my-skill", directory is "data-processor" | SKILL.md frontmatter | error |
 
-## Reference / Script / Asset Health
-- references/planning-guide.md — 361 lines, no TOC (warning: >300 lines)
-- references/orphan-file.md — not referenced from SKILL.md (warning: orphan)
-- scripts/transform.sh — missing execute permission (warning)
+## Resource Health
+- references/planning-guide.md — 361 lines, no table of contents (warning)
+- references/legacy-notes.md — never referenced from the body (warning: orphan)
+- scripts/transform.sh — not executable (warning)
 
-## Style Suggestions (manual review)
-- S1: Line 47 — "You MUST always validate" → consider: "Always validate output because
-  the pipeline rejects malformed JSON, which wastes a full retry cycle."
-- S2: Line 83 — "ALWAYS name output `report_final.docx`" → consider: "Name the output
-  to match the user's input filename, because downstream tools expect consistency."
-- S3: Description field — add trigger phrases from "When to Use" section:
-  "before publishing", "quality check"
+## Style Suggestions
+Subjective rewording, kept out of the table so the author can ignore it wholesale.
+- L47 "You MUST always validate" → "Validate before returning, because the pipeline drops malformed JSON and the user sees the failure much later."
+- Description → add the trigger phrases the body already knows: "before publishing", "quality check".
 
 ## Summary
-Errors: N | Warnings: N | Info: N | Style: N
-Estimated line reduction: ~N lines
+Errors N ・ Warnings N ・ Info N ・ Style N
+Body could shrink by ~N lines by extracting L345-411 and L120-195.
+
+## Not checked
+Behavior. No prompt was run, no eval executed. If evals/ exists, it was not run.
 ```
 
-### Report Guidelines
+Rules that keep the report usable:
 
-- **Be specific**: cite line numbers, section names, and quote the problematic text
-- **Be actionable**: each finding should make it clear what to fix and why
-- **Avoid false positives**: use the false positive guidance in audit-criteria.md before flagging
-- **Style suggestions are separate**: put subjective rewording suggestions in the Style Suggestions section, not in the main findings table — the skill author decides whether to adopt them
-- **Estimate line reduction**: sum up the lines of content flagged for extraction to references/ — this gives the author a sense of how much the body could shrink
-
----
-
-## Pipeline Integration
-
-skill-reviewer is designed to feed into skill-optimizer. The typical workflow:
-
-1. Run `skill-reviewer` to get the diagnostic report
-2. Review findings and decide which to address
-3. Run `skill-optimizer` to refactor (it will run its own diagnosis as part of Phase 1, but having reviewed the report upfront helps the author make informed decisions about which refactorings to approve)
-
-skill-reviewer can also be used standalone as a quality gate — run it before publishing a skill, after major edits, or as part of a review checklist.
+- Every row carries a location. A finding without one cannot be verified and will be dismissed.
+- Quote the offending text when the finding is about wording; the author should not have to grep for it.
+- Estimate the line reduction for extraction findings — the author needs to know whether the work is worth it.
+- Close with an honest coverage line: which dimensions ran, which were skipped and why, what stayed unread.
+- If the skill is genuinely clean, say so in one line and stop. Inventing findings to look thorough is the failure mode of audit tools.
 
 ---
 
-## Resource Reference
+## Failure modes this skill exists to avoid
 
-Audit criteria details are in `references/audit-criteria.md`. Load it at the start of the audit process — it contains the per-dimension rubrics (thresholds, detection methods, false positive guidance) that this file intentionally does not repeat.
+- Writing the report to a file, or "helpfully" applying a fix mid-audit — the author asked for a diagnosis, and a surprise edit destroys the diff they wanted to review.
+- Reporting structure as if it were behavior: "PASS" on a skill whose instructions are subtly wrong. Static checks cannot see that; the report has to say so.
+- Padding with false positives. Three real findings beat twenty, and the twenty teach the author to skim.
+- Judging against personal taste and filing it as `error`. Taste belongs in Style Suggestions.
+- Numbering dimensions in the output. Use the slug.
+
+---
+
+## Resources
+
+- `references/audit-criteria.md` — per-dimension rubrics: thresholds, detection methods, false-positive guidance. Load it in Step 2; the 17-line list in the body is a table of contents, not the criteria.

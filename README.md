@@ -73,47 +73,71 @@ Iterative review-fix loop built on a claim ledger rather than agent voting. A re
 review loop 我这堆未提交的改动，拒绝意见要带证据
 ```
 
-### skill-optimizer
-
-Audit and refactor SKILL.md files against [skill-creator](https://github.com/anthropics/claude-code) writing standards.
-
-**What it does:**
-- **Phase 1 — Diagnose**: Read-only audit across 11 dimensions (body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, frontmatter, script health, safety patterns, etc.)
-- **Phase 2 — Refactor**: Architecture refactoring, instruction rewriting, description optimization, health fixes (requires user confirmation)
-- **Phase 3 — Review**: Verify completeness, pointer integrity, and standalone readability
-
-**Usage:**
-```
-/skill-optimizer <path-to-skill-directory> [--diagnose-only] [--dimensions N,N,...]
-```
-
 ### skill-reviewer
 
-Static audit of SKILL.md files against skill-creator writing standards.
+Read-only text audit of a skill. Reports, never edits.
 
 **What it does:**
-- Read-only 11-dimension audit: body size, progressive disclosure, redundancy, instruction style, description triggering, reference health, frontmatter, script health, safety patterns, and more
-- Produces a diagnostic report with severity levels (error / warning / info / style)
-- Does NOT modify any files — purely diagnostic
+- 17 fixed dimensions: body size, progressive disclosure, conditional content, redundancy, instruction style, description triggering, reference health, examples, frontmatter, script health, safety, diagrams, visual noise, referencing, heading depth, chunking, pronoun clarity
+- Each finding carries a location and one of four severities (error / warning / info / style); taste goes in a separate Style Suggestions section
+- Names dimensions by slug, not by number, so a finding stays meaningful after the list changes
+- Says plainly that it did not check behavior — a text audit cannot see a skill that reads well and works badly
 
 **Usage:**
 ```
-/skill-reviewer <path-to-skill-directory> [--dimensions N,N,...]
+/skill-reviewer skills/my-skill
+/skill-reviewer skills/my-skill 只看 description 和 reference health
+```
+
+### skill-optimizer
+
+Rewrite a skill that has grown long, repetitive, or hard to follow. Changes existing content only.
+
+**What it does:**
+- **Change list first**: every intended edit as problem / location / action (`extract`, `rewrite`, `delete`, `fix`) / reason, plus the line-budget math; nothing is written until you approve
+- **Four groups**: split by loading level, rewrite instructions with rationale, rewrite the description, fix objectively broken things
+- **Preview before writing**: diffs labelled `insert` / `replace` / `delete` with a reason per hunk
+- **Two-part verdict**: structural checks, and a behavior check that either reruns the skill's evals or states "behavior unverified" in the verdict line
+- Bundles its own `references/rewrite-playbook.md` — thresholds, split rules, rewrite patterns, description construction, verification
+
+**Usage:**
+```
+/skill-optimizer skills/my-skill
+/skill-optimizer skills/my-skill 只看 description，别动别的
+```
+
+### skill-enhancer
+
+Add content to a skill. Strictly additive — inserts, never rewrites or deletes.
+
+**What it does:**
+- Classifies the addition (section / reference / agent / script / example), decides the loading level, and checks the line budget before writing
+- Plan before content: intent, the standard being applied, a file-level change table, an outline, and the projected line count
+- Stops when the addition conflicts with an existing line, quotes the line, and offers the two real options instead of silently editing it
+- Verifies insert-only diffs, reference integrity, duplication, and line budget — and reports behavior as unverified unless the skill has evals to rerun
+
+**Usage:**
+```
+/skill-enhancer skills/my-skill add an error recovery section
+/skill-enhancer skills/my-skill 补一个 agents/validator.md
 ```
 
 ### skill-auditor
 
-Evaluate skill effectiveness through test runs, grading, benchmarking, and A/B comparison.
+Measure whether a skill actually works. Behavioral, not textual.
 
 **What it does:**
-- **Eval mode**: Write test cases, run with-skill vs baseline, grade outputs, benchmark performance, collect user feedback, iterate
-- **Compare mode**: Blind A/B comparison between two skill versions with post-hoc analysis
-- **Trigger mode**: Optimize skill description for better triggering accuracy
-- **Grade-only mode**: Grade existing outputs without re-running
+- Runs 2-3 realistic prompts with the skill and against a baseline in the same turn, grades the outputs, and benchmarks pass rate, tokens, and time with mean ± stddev and the delta
+- Baseline aware: no skill (new skill) or the pre-change snapshot (improvement) — a run without one measures task difficulty, not the skill
+- Asserts while the runs are in flight, grades by script where possible, and flags assertions that pass either way
+- `scripts/build_review.py` turns an iteration into one static HTML review page with per-case outputs, grades, previous-iteration comparison, and a feedback box that exports `feedback.json`
+- Modes: eval, blind A/B comparison, trigger measurement (20 queries, near-miss negatives, 60/40 split, picked by test score), grade-only
 
 **Usage:**
 ```
-/skill-auditor <path-to-skill> [--eval | --compare | --trigger | --grade-only]
+/skill-auditor skills/my-skill
+/skill-auditor skills/my-skill 比较一下新旧两版
+/skill-auditor skills/my-skill 只测触发
 ```
 
 ### prizm-video-analyzer

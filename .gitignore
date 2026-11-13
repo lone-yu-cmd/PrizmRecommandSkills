@@ -4,3 +4,5 @@
 skills-lock.json
 review-loop-workspace/
 skills/review-loop/evals/
+__pycache__/
+*.pyc

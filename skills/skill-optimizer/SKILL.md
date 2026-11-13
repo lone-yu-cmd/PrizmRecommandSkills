@@ -1,238 +1,143 @@
 ---
 name: "skill-optimizer"
-description: "Audit and optimize SKILL.md files against skill-creator writing standards. Use this skill whenever someone wants to review skill quality, a skill feels too long or triggers poorly, before releasing a skill, or when restructuring skill content. Triggers on: 'optimize skill', 'audit skill', 'review skill quality', 'skill health check', 'skill too long'."
+description: "Restructure and rewrite a skill that has grown too long, repetitive, or hard to follow: split content across SKILL.md and references/, convert MUST-style directives into instructions with rationale, rewrite the description for reliable triggering, fix reference and script health, and verify nothing was lost. Use this skill whenever someone wants to optimize, refactor, restructure, tighten, split, trim, clean up, modernize, or shorten a skill, or says a skill is bloated, messy, too long, or badly organized. Triggers on: 'optimize skill', 'refactor skill', 'restructure this skill', 'skill too long', 'trim this skill', 'split this skill', 'clean up this skill', 'modernize this skill'. It changes content that already exists; it does not add new capability, and it does not run an evaluation of the skill's behavior."
 ---
 
 # Skill Optimizer
 
-Audit any skill against skill-creator writing standards, then optimize it. Three phases: diagnose (read-only audit report), optimize (apply targeted fixes per diagnostic findings, with user confirmation), review (verify nothing was lost).
+Rewrite one skill so it loads less, reads clearer, and triggers better — without losing what it knows.
 
-The audit criteria come from skill-creator's own guidelines — this skill doesn't invent new rules, it enforces the existing ones.
+The work is entirely on existing content: move it, cut it, rewrite it. Nothing new is invented here. If the author wants a section that does not exist yet, that is a different job and the plan should say so instead of quietly writing new material under the heading of "optimization".
 
-### When to Use
-- "Optimize this skill", "audit skill", "review skill quality"
-- A skill feels too long or bloated
-- Description doesn't trigger reliably
-- Before publishing or sharing a skill
-- After major edits to a skill, as a quality check
+### When to use
 
-### `/skill-optimizer` \<path-to-skill-directory\> [options]
+- The body has grown past the point where a model can hold it (approaching 500 lines)
+- Sections that only matter on one branch are sitting in the main path
+- Instructions are all-caps directives with no reason attached, or so specific they stop the model from generalizing
+- The skill does not fire when it should, or fires on the wrong requests
+- Reference files, scripts, or examples have drifted out of sync with the body
 
-Accepts either a skill directory path or a direct path to a SKILL.md file.
+### Invocation
 
-Supported options (free-text, not parsed as CLI flags):
+The user names a skill directory (or its SKILL.md) and says what bothers them. Both are natural language, not flags:
 
-- `--diagnose-only`: Run Phase 1 only (read-only audit, no modifications).
-- `--dimensions N,N,...`: Run only the specified dimensions (comma-separated numbers, e.g., `--dimensions 5,6,9`). Useful for targeted checks after editing a specific aspect. Default: all dimensions.
+- "just diagnose it, don't change anything" → Phase 1 only, then stop
+- "only fix the description" → run only the description group in Phase 2
+- "split the body but leave my wording alone" → disclosure group only, no instruction rewrites
 
-Default mode: run all three phases with a confirmation gate before Phase 2.
-
----
-
-## Phase 1: Diagnose
-
-Read-only analysis. No files are modified.
-
-#### Step 1: Locate and load target skill
-
-Resolve the target path to find SKILL.md. Read it fully. Also read all files under the skill's `references/`, `assets/`, and `scripts/` directories (if they exist) to understand the full skill structure.
-
-#### Step 2: Load audit criteria
-
-Read `references/audit-criteria.md` from this skill's directory. This contains the detailed rubrics for each dimension.
-
-#### Step 3: Run 17-dimension audit
-
-Evaluate the target skill against these dimensions (detailed criteria in the reference file):
-
-1. **Body size** — line count vs 500-line budget
-2. **Progressive disclosure** — is content at the right loading level?
-3. **Conditional content** — low-frequency content loading unconditionally; domain-variant branches that should be separate reference files
-4. **Internal redundancy** — repeated content, description/body overlap
-5. **Instruction style** — MUST/NEVER overuse vs explaining rationale; over-specificity/overfitting of instructions
-6. **Description triggering** — pushy enough? covers what + when-to-use? consistent with body's "When to Use" section? keyword coverage of core domain terms?
-7. **Reference file health** — oversized files, orphans, broken references (including scripts/ and assets/ paths)
-8. **Example effectiveness** — helpful vs token-consuming
-9. **Frontmatter completeness** — required fields present (name, description), YAML well-formed, name matches directory
-10. **Script & asset health** — executability, orphan detection, Python package structure
-11. **Safety patterns** — destructive commands, remote code execution, data exfiltration patterns
-12. **Diagram effectiveness** — workflow descriptions using ASCII tree format instead of LLM-friendly numbered lists
-13. **Visual noise** — decorative markdown, emoji, and HTML styling that wastes tokens without adding semantic value
-14. **Semantic referencing** — positional references ("see above") instead of named anchors ("see §Phase 2 Step 3")
-15. **Heading hierarchy** — heading nesting deeper than 4 levels, increasing LLM context tracking burden
-16. **Information chunking** — dense paragraphs (100+ words) and wide tables (5+ columns) that hinder token-level parsing
-17. **Pronoun clarity** — ambiguous pronouns ("it", "this") with unclear referents that LLMs may misresolve
-
-If `--dimensions` was specified, run only the listed dimensions.
-
-For each finding, assign a severity:
-- **error**: blocks the skill's effectiveness, should fix
-- **warning**: degrades quality, recommend fixing
-- **info**: minor improvement opportunity
-- **style**: subjective suggestion, requires human judgment
-
-#### Step 4: Generate diagnostic report
-
-Output the report to conversation using the format in §Output Format below. Do NOT write to any file.
-
-#### Step 5: Gate
-
-If `--diagnose-only` was specified, stop here with a summary.
-
-Otherwise, present the report and ask: "Ready to proceed with optimization? (yes to proceed / no to stop)"
+Record which groups the user authorized. Everything else is out of scope for this run.
 
 ---
 
-## Phase 2: Optimize
+## Phase 1 — Change list
 
-**Precondition**: User explicitly confirmed "yes" after reviewing the diagnostic report.
+Read the target's SKILL.md fully, plus every file under `references/`, `scripts/`, `assets/`, and `agents/`. Read `references/rewrite-playbook.md` — it holds the thresholds and the mechanics for every change type below.
 
-Apply targeted fixes for diagnostic findings. Each step addresses a specific category — only the parts flagged in Phase 1 are touched, unflagged content stays as-is.
-
-Steps 1–4 are planning steps: prepare all proposed changes without writing any files. Step 5 previews them for user confirmation. Step 6 applies.
-
-#### Step 1: Structure optimization — Progressive Disclosure
-
-Reorganize flagged content across skill-creator's three loading levels. Only move content that was flagged in Phase 1 (D2/D3 findings) — don't reorganize sections that passed audit.
-
-- **Level 1 (Metadata)**: Ensure `name` and `description` frontmatter are complete. Fix D9 findings. Align `name` with directory name.
-- **Level 2 (SKILL.md body)**: Retain only flow-control logic — decisions, routing, gates, phase structure, and the "what/when" of each step. Target < 500 lines.
-- **Level 3 (Bundled resources)**:
-  - **→ references/**: Extract procedural details the model needs only on specific branches (error tables, format specs, sub-procedures > 15 lines).
-  - **→ scripts/**: Identify deterministic or repetitive operations described in prose. If the instructions describe a multi-step procedure that could be a script, write it once in `scripts/` and reference it. Per skill-creator: "if all test cases resulted in the subagent writing a similar helper script, that's a strong signal the skill should bundle that script."
-  - **Domain-variant pattern**: When multiple conditional branches exist for different frameworks/platforms and each exceeds 15 lines, split into one reference file per variant. SKILL.md keeps only the selection logic.
-  - **Merge, don't proliferate**: If extracted content belongs in an existing reference file, append it there instead of creating a new file.
-
-For each extraction, replace removed content with a pointer that states *when* to load it — not just a path, but the condition: "Read `references/error-recovery.md` when a validation error occurs in Step 3."
-
-#### Step 2: Instruction improvement — Explain the Why
-
-Improve flagged instructions following skill-creator's core writing principle: "explain to the model why things are important in lieu of heavy-handed musty MUSTs. Use theory of mind and try to make the skill general."
-
-For each D5 finding:
-
-1. **Improve directives with rationale** — Transform `MUST/ALWAYS/NEVER` into: imperative verb + action + reason. Example: `"ALWAYS validate JSON"` → `"Validate the output as JSON before returning, because the downstream pipeline silently drops malformed payloads and the user won't see an error until much later."`
-
-2. **Generalize over-specific instructions** — Replace hardcoded filenames, formats, or single-scenario assumptions with the general principle. Example: `"ALWAYS name output report_final.docx"` → `"Name the output to match the user's input filename — downstream tools expect filename consistency."` The model is smart enough to adapt when it understands *why*.
-
-3. **Prune dead weight** — Read through the full instruction set and identify guidance that is unlikely to influence model behavior: restating what the model would do by default, redundant emphasis, edge cases so rare they don't justify the token cost. Per skill-creator: "remove things that aren't pulling their weight." Delete them.
-
-4. **Resolve contradictions** — If two instructions conflict (D5 error findings), determine which reflects the skill author's actual intent and remove the other.
-
-Present all instruction improvements and deletions as a numbered list of **before → after** pairs. The user confirms or rejects each individually — rewrites can shift meaning, and the skill author's intent takes precedence over generic optimization.
-
-#### Step 3: Description optimization — Combat Undertriggering
-
-Generate an improved `description` field following skill-creator's triggering standard.
-
-The description is the primary mechanism Claude uses to decide whether to invoke a skill. Per skill-creator: "make the skill descriptions a little bit pushy" to combat undertriggering.
-
-Construct the new description with these components:
-
-1. **WHAT** — Clear capability statement (verb-led: "Audit and optimize...", "Generate and validate...")
-2. **WHEN** — Specific trigger contexts. Merge in all scenarios from the body's "When to Use" section that are missing from the current description (D6 consistency findings). Include "Use this skill whenever..." or "Triggers on:..." phrasing.
-3. **Keywords** — Domain-specific terms that users would naturally say (D6 keyword coverage findings). If the body repeatedly mentions "benchmark", "eval", "grading" but the description doesn't, users who say those words won't trigger the skill.
-4. **Near-miss coverage** — Think about what adjacent requests the skill should also handle. Per skill-creator example: "even if they don't explicitly ask for a 'dashboard'."
-
-Present current vs proposed description side by side. The user picks one or edits further.
-
-#### Step 4: Structure & health fixes
-
-Objective fixes applied directly (no subjective judgment):
-
-- **Broken references** → update paths or create missing files (D7-C)
-- **Frontmatter** → add missing required fields (D9)
-- **Script permissions** → add execute bit to `.sh` files (D10-A)
-- **Python packages** → add `__init__.py` for module-style imports (D10-C)
-- **Reference TOC** → add table of contents to files > 300 lines (D7-A)
-- **Orphaned references** → for each orphan, ask user: delete it or add a pointer from SKILL.md? (D7-B)
-- **Safety patterns** → add path validation to destructive commands, add user-confirmation gates to remote execution (D11)
-- **Example quality** → trim examples > 30 lines to focus on input/output pairs; add 1-2 concise examples to multi-step skills that have none (D8)
-
-#### Step 5: Diff preview and confirmation
-
-After preparing all changes (Steps 1–4), generate a unified preview before writing any files:
-
-For each file to be modified or created, show:
-- Unified-diff style view of removals and additions
-- Grouped by the step that produced them (Structure / Instruction / Description / Health)
-- A brief rationale for each change
-
-Present to the user: "Apply these changes? (yes to apply all / partial to select which changes / no to cancel)"
-
-#### Step 6: Apply and summarize
-
-Write all confirmed changes. Print a change summary:
-- Files modified, files created, files deleted
-- Lines removed / added
-- Instructions improved (count)
-- Description: changed or unchanged
-
----
-
-## Phase 3: Review
-
-Verification pass after Phase 2 completes. Checks 5 dimensions:
-
-1. **Completeness** — every piece of content removed from SKILL.md exists in a reference file, with a pointer from SKILL.md
-2. **Pointer integrity** — every reference path mentioned in SKILL.md exists on disk; every reference file is pointed to from SKILL.md (no orphans)
-3. **No new duplication** — content doesn't appear in both SKILL.md and a reference file
-4. **Standalone readability** — SKILL.md is still interpretable as a workflow guide without reading reference files (the "what" and "when" are in SKILL.md; only "how" details are deferred)
-5. **Line count** — SKILL.md is now within the 500-line budget
-
-Output a verdict per check: PASS or FAIL with specifics.
-
-Overall verdict: **PASS** or **NEEDS MANUAL FIXES** (with the specific issues listed).
-
----
-
-## Output Format
-
-The Phase 1 diagnostic report uses this structure:
+Produce a change list, not an audit report. Each item is one intended change:
 
 ```markdown
-# Skill Optimizer Report
-Skill: <name>
-Path: <absolute-path>
-Lines: N (budget: 500)
-
-## Findings
-
-| # | Dimension | Severity | Finding | Location |
-|---|-----------|----------|---------|----------|
-| 1 | Body size | warning | 413 lines — approaching 500-line budget | SKILL.md |
-| 2 | Prog. disclosure | error | §Error Recovery (67 lines) is procedural detail, candidate for references/ | SKILL.md L345-411 |
-| 3 | Cond. content | warning | 3 domain branches (React/Vue/Angular) each >20 lines — candidate for domain-variant pattern | SKILL.md L120-195 |
-| 4 | Redundancy | warning | Resume table appears in both §Error Recovery and §Resume Support | SKILL.md L398, L462 |
-| 5 | Instr. style | warning | "ALWAYS use report_final.docx" — over-specific, should generalize to match user's input | SKILL.md L47 |
-| 6 | Desc. triggering | warning | "When to Use" lists "before publishing" but description doesn't mention publishing | SKILL.md frontmatter |
-| 7 | Ref. health | error | references/planning-guide.md — 361 lines, no TOC | references/ |
-| 8 | Examples | info | No examples for multi-step workflow — consider adding 1-2 concise examples | SKILL.md |
-| 9 | Frontmatter | error | `name` field is "my-skill" but directory is "data-processor" | SKILL.md frontmatter |
-| 10 | Script health | warning | scripts/transform.sh lacks execute permission | scripts/ |
-| 11 | Safety | warning | `rm -rf $OUTPUT_DIR` without path validation | scripts/cleanup.sh L12 |
-| ... | | | | |
-
-## Reference / Script / Asset Health
-- references/planning-guide.md — 361 lines, no TOC (warning: >300 lines)
-- references/orphan-file.md — not referenced from SKILL.md (warning: orphan)
-- scripts/transform.sh — missing execute permission (warning)
-
-## Style Suggestions (manual review)
-- S1: Line 47 — "You MUST always validate" → consider: "Always validate output because
-  the pipeline rejects malformed JSON, which wastes a full retry cycle."
-- S2: Line 83 — "ALWAYS name output `report_final.docx`" → consider: "Name the output
-  to match the user's input filename, because downstream tools expect consistency."
-- S3: Description field — add trigger phrases from "When to Use" section:
-  "before publishing", "quality check"
-
-## Summary
-Errors: N | Warnings: N | Info: N | Style: N
-Estimated line reduction: ~N lines
+| # | Problem | Location | Action | Reason |
+|---|---------|----------|--------|--------|
+| 1 | Error recovery is 67 lines in the main path but only matters when validation fails | SKILL.md L345-411 | extract → references/<topic>.md | move to on-demand loading |
+| 2 | "ALWAYS name output report_final.docx" | SKILL.md L83 | rewrite | hardcoded filename, model cannot generalize |
+| 3 | Description omits the "before publishing" scenario | frontmatter | rewrite | the body lists it, the metadata does not, so it will not fire |
 ```
+
+Four actions only: `extract` (move to a bundled file), `rewrite` (same place, better text), `delete` (nothing depends on it), `fix` (objectively broken: path, permission, frontmatter, missing `__init__.py`).
+
+Then show the budget math — current lines, expected delta per item, projected total. If the projection exceeds 500, the plan is incomplete.
+
+Then stop and show the list. Do not begin editing until the author picks which items to apply. If the list is empty, say the skill is structurally sound and stop here; inventing work to justify the run wastes the author's review time.
 
 ---
 
-## Resource Reference
+## Phase 2 — Apply
 
-Audit criteria details are in `references/audit-criteria.md`. Load it at the start of Phase 1 — it contains the per-dimension rubrics (thresholds, detection methods, false positive guidance) that this file intentionally does not repeat.
+Work through the authorized groups in this order. Each group loads its section of the playbook.
+
+### Group 1 — Split by loading level
+
+Decide per block whether the model needs it every time the skill triggers, or only on one branch:
+
+- Every time → stays in the body
+- One branch only, and the block is long → `references/<topic>.md`
+- Deterministic and repeatable → `scripts/`, called from the body
+
+Every extraction leaves a pointer that names the condition, not just the path: "Read `references/<topic>.md` when a validation error occurs in Step 3" beats "See references/ for details", because the second one is only followed by a model that already opened the file.
+
+Merge into an existing reference file when the topic matches instead of creating a ninth file. A skill with nine thin references has the same problem as a 700-line body, relabeled.
+
+### Group 2 — Rewrite instructions
+
+For each `rewrite` item:
+
+1. Replace bare directives with directive + reason, so the model can generalize instead of obeying literally: "Validate the output as JSON before returning, because the pipeline drops malformed payloads and the failure surfaces much later."
+2. Replace hardcoded specifics with the principle behind them: "Name the output to match the input filename, because downstream tools expect consistency."
+3. Delete guidance that changes nothing — restating default behavior, emphasis that repeats itself, edge cases too rare to pay for.
+4. When two instructions contradict, decide which one the author actually meant and remove the other. Ask if it is genuinely unclear rather than picking the more recent one.
+
+Show these as before → after pairs and let the author accept or reject each one. A rewrite can shift meaning, and the author's intent outranks the style rule.
+
+### Group 3 — Rewrite the description
+
+The description is the only part of the skill that is always in context, so it carries all the triggering work: what the skill does, when to use it, the words users actually type, and the near-miss cases that look similar but are not this skill. Keep it pushy enough to beat the model's habit of solving simple things without consulting anything.
+
+Show current against proposed, with one line per change. Do not apply without confirmation — this field decides whether the skill fires at all.
+
+### Group 4 — Health fixes
+
+Objectively broken things, resolved without judgement calls:
+
+- Body points at a path that does not exist → fix the path or create the file
+- Missing required frontmatter → add it; align `name` with the directory
+- `.sh` without execute bit → `chmod +x`
+- Python package without `__init__.py` → add one
+- Reference over 300 lines without a table of contents → add one
+- Reference no one points at → ask: delete it, or wire in a pointer
+- Destructive command with an unvalidated path → validate the path, or require confirmation
+- Example over 30 lines demonstrating the obvious → trim to input/output
+
+### Preview, then write
+
+Before touching disk, show a diff of every file, grouped by the step that produced it, with each hunk labelled `insert`, `replace`, or `delete` and one line of rationale. Wait for the go-ahead. Then apply and summarize: files changed, added, removed; lines removed and added; instructions rewritten; description changed or not.
+
+---
+
+## Phase 3 — Verify
+
+### Structure (always)
+
+- **Completeness** — every line removed from the body exists in a bundled file
+- **Pointer integrity** — every path named in the body exists; every bundled file is named from the body
+- **No new duplication** — extracted content is not also still in the body
+- **Standalone readability** — the body still reads as a workflow: what happens, in what order, when to branch. Only the how was deferred.
+- **Budget** — the body is under 500 lines
+
+### Behavior (only when it can actually be checked)
+
+Structural checks prove the files agree with each other. They cannot prove the skill still works, and a refactor that removes half the body is exactly the change most likely to break behavior while passing every structural check.
+
+So: if the target skill has `evals/evals.json`, rerun those prompts against the new version, compare with the pre-change run or a baseline, and report the delta. If it has no evals, the verdict must say **behavior unverified** in the verdict line itself — not in a footnote the author will skip.
+
+Verdict is one of three, never blurred:
+
+- **PASS** — structure holds and behavior was re-checked
+- **STRUCTURAL PASS, BEHAVIOR UNVERIFIED** — structure holds, nothing was run
+- **NEEDS WORK** — with the specific items
+
+---
+
+## Failure modes
+
+- Adding content under the name of optimization: new sections, new capabilities, new examples the author never asked for
+- Rewriting wording the author liked because the style rule prefers another phrasing — the rule serves the author
+- Extracting so aggressively that the body becomes a table of contents with no instructions in it
+- Splitting into many thin reference files instead of merging into the right one
+- Reporting PASS from structural checks alone, which is the most expensive mistake here: the author ships, and the regression shows up in use
+- Touching items that were not in the approved change list
+
+---
+
+## Resources
+
+- `references/rewrite-playbook.md` — thresholds, split rules, instruction rewrite patterns, description construction, diff preview format, verification checklist. Load it in Phase 1 and keep it open through Phase 3.

@@ -1,53 +1,49 @@
 ---
 name: "skill-auditor"
-description: "Evaluate skill effectiveness through test runs, grading, benchmarking, and A/B comparison. Use this skill whenever someone wants to test a skill against real prompts, measure skill quality with quantitative metrics, compare two skill versions, benchmark skill performance, optimize a skill's description for better triggering, or run evals. Triggers on: 'test this skill', 'run evals', 'benchmark skill', 'compare skill versions', 'skill triggering', 'does this skill work', 'eval skill'."
+description: "Measure whether a skill actually works: write realistic test prompts, run them with and without the skill, grade the outputs, benchmark pass rate, time and tokens, and compare versions. Use this skill whenever someone wants to test a skill, run evals, benchmark performance, check whether a skill triggers when it should, compare an old and new version, or find out if an edit made a skill better or worse. Triggers on: 'test this skill', 'run evals', 'eval skill', 'benchmark skill', 'compare skill versions', 'does this skill work', 'skill triggering', 'measure skill quality'. Runs the skill and measures outcomes; it does not audit text and does not edit the skill."
 ---
 
 # Skill Auditor
 
-Evaluate whether a skill actually works by running it against real prompts, grading outputs, benchmarking performance, and comparing versions. This skill provides the runtime evaluation loop that complements skill-optimizer's static analysis.
+Answer one question with evidence: does this skill work better than not having it?
 
-The evaluation methodology comes from skill-creator's testing framework — this skill extracts and focuses the evaluation workflow into a standalone tool.
+Everything here is behavioral. A skill can be beautifully written and still produce worse output than a bare model; the only way to know is to run both and compare. That makes the baseline non-negotiable — a run with no baseline measures how hard the task is, not how good the skill is.
 
-### When to Use
-- "Test this skill", "run evals", "benchmark this skill"
-- "Compare the old version with the new one"
-- "Does this skill actually work?"
-- "Optimize the skill's description for better triggering"
-- After creating or modifying a skill, to verify it works
-- Before publishing a skill, to measure quality
+### When to use
 
-### `/skill-auditor` \<path-to-skill\> [mode]
+- After writing or changing a skill, to see whether the change helped
+- "Does this skill actually work?" / "Is it worth shipping?"
+- "Which of these two versions is better?"
+- "The skill never fires when I want it to" (trigger measurement)
+- Before publishing, to have numbers instead of impressions
 
-Accepts a skill directory path or a direct path to a SKILL.md file.
+### Invocation
 
-**Modes:**
-- `--eval` (default): Full evaluation loop — write test cases, run them, grade, benchmark, collect feedback
-- `--compare`: Blind A/B comparison between two skill versions
-- `--trigger`: Optimize the skill's description for better triggering accuracy
-- `--grade-only`: Grade existing run outputs without re-running
+The user names a skill path and says what they want. Modes in plain words:
+
+- default — design tests, run with and without, grade, benchmark, review, iterate
+- "compare these two versions" — blind A/B comparison
+- "just measure triggering" — description trigger measurement
+- "grade what we already ran" — grade existing outputs, no new runs
+
+The two bundled scripts are referenced from this skill's own `scripts/` directory. Resolve them relative to this skill, not to the user's project — a run from the wrong cwd is the most common way this workflow breaks.
 
 ---
 
-## Phase 1: Test Case Design
+## Phase 1 — Design the tests
 
-### Step 1: Understand the skill
+Read the target's SKILL.md and every bundled file. You need to know what good output looks like before writing a prompt that produces it.
 
-Read the target skill's SKILL.md and all bundled resources (references/, scripts/, assets/). Understand what the skill does, when it triggers, and what good output looks like.
+Write 2-3 prompts a real user would type. Concrete beats abstract: file paths, column names, backstory, the messy phrasing people actually use. "Add profit margin to column E of the Q4 xlsx my boss sent" tests something; "process data" tests nothing.
 
-### Step 2: Write test prompts
+Two constraints that decide whether the results mean anything:
 
-Create 2-3 realistic test prompts — the kind of thing a real user would actually say. Good test prompts are:
+- **Substantive.** A one-step request may not trigger any skill, so it measures nothing about this one. Complex, multi-step, specialized requests are what actually load a skill.
+- **Diverse.** Different phrasings of the same intent, one edge case, one case where the user never names the skill. Three variations of the same prompt produce one data point three times.
 
-- **Concrete and detailed** — include file paths, personal context, specific data. Not "format this data" but "my boss sent me Q4_sales_final.xlsx and wants profit margins added to column E"
-- **Diverse** — cover different use cases, phrasings (formal/casual), and edge cases
-- **Substantive** — complex enough that Claude would benefit from consulting the skill, because simple one-step queries may not trigger skills regardless of quality
+Show the prompts to the user before running. Bad prompts cost a full iteration to discover.
 
-Share them with the user for review before running.
-
-### Step 3: Save test cases
-
-Save to `evals/evals.json` in the skill directory. Start with prompts only — assertions come later (Step 2 of Phase 2).
+Save to `evals/evals.json` in the skill directory — prompts and expected output first, assertions come in Phase 2 while the runs are in flight.
 
 ```json
 {
@@ -56,61 +52,77 @@ Save to `evals/evals.json` in the skill directory. Start with prompts only — a
     {
       "id": 1,
       "prompt": "User's task prompt",
-      "expected_output": "Description of expected result",
+      "expected_output": "What a good result looks like",
       "files": []
     }
   ]
 }
 ```
 
-See `references/eval-schemas.md` for the full schema.
+Full schema: `references/eval-schemas.md`.
 
 ---
 
-## Phase 2: Run and Evaluate
+## Phase 2 — Run, grade, benchmark
 
-This is one continuous sequence — don't stop partway through.
+One continuous sequence. Stopping halfway leaves a folder of transcripts and no answer.
 
-### Workspace layout
+### Workspace
 
-Put results in `<skill-name>-workspace/` as a sibling to the skill directory. Organize by iteration (`iteration-1/`, `iteration-2/`) and within that, each test case gets a descriptive directory name.
+`<skill-name>-workspace/iteration-<N>/`, as a sibling of the skill directory. Each test case gets its own directory with a descriptive name, not `eval-0`:
 
-### Step 1: Spawn all runs in parallel
-
-For each test case, spawn **two** subagents in the same turn — one with the skill, one without. Launch everything at once so results arrive together.
-
-**With-skill run:**
+```text
+skill-name-workspace/iteration-1/
+├── error-recovery-flow/
+│   ├── with_skill/outputs/
+│   └── without_skill/outputs/
+└── multi-file-refactor/
+    ├── with_skill/outputs/
+    └── without_skill/outputs/
 ```
+
+### Step 1 — Launch every run in one turn
+
+For each test case, two subagents at once — with the skill, and the baseline. Launching them together keeps the environment comparable and finishes them together; running the skill cases first and baselines an hour later produces a comparison of two different machines.
+
+```text
 Execute this task:
 - Skill path: <path-to-skill>
 - Task: <eval prompt>
-- Input files: <eval files if any, or "none">
-- Save outputs to: <workspace>/iteration-<N>/eval-<ID>/with_skill/outputs/
-- Outputs to save: <what the user cares about>
+- Input files: <eval files, or "none">
+- Save outputs to: <workspace>/iteration-<N>/<case>/with_skill/outputs/
+- Outputs to save: <what the user cares about — the file, the table, the report>
 ```
 
-**Baseline run** (depends on context):
-- **New skill**: Same prompt, no skill, save to `without_skill/outputs/`
-- **Improving existing skill**: Snapshot the old version first (`cp -r`), run baseline against the snapshot, save to `old_skill/outputs/`
+The baseline depends on what is being tested:
 
-Write an `eval_metadata.json` for each test case with a descriptive name.
+- **New skill** — no skill at all, saved to `without_skill/outputs/`. This answers "is the skill better than nothing".
+- **Improvement to an existing skill** — snapshot the pre-change version with `cp -r` before editing anything, run the baseline from the snapshot, save to `old_skill/outputs/`. This answers "did the edit help", which is usually the real question.
 
-### Step 2: Draft assertions while runs are in progress
+Write `eval_metadata.json` per case, assertions empty for now:
 
-Don't wait — use this time to draft quantitative assertions and explain them to the user.
+```json
+{
+  "eval_id": 0,
+  "eval_name": "descriptive-name",
+  "prompt": "The task prompt",
+  "assertions": []
+}
+```
 
-Good assertions:
-- Are **objectively verifiable** (not "output looks nice")
-- Have **descriptive names** that read clearly in the benchmark viewer
-- Are **discriminating** — they pass when the skill succeeds and fail when it doesn't
+### Step 2 — Write assertions while the runs execute
 
-Don't force assertions onto subjective outputs (writing style, design quality) — those are better evaluated qualitatively through the viewer.
+Idle time is free, and assertions written before seeing the outputs are harder to fudge toward whatever the skill happened to produce.
 
-Update `eval_metadata.json` and `evals/evals.json` with the drafted assertions.
+Good assertions are objectively checkable, named so a stranger understands them at a glance in the report ("chart has axis labels", not "output is good"), and **discriminating** — they fail when the skill is absent and pass when it works. An assertion that passes in both configurations carried no information and should be dropped, which is worth noticing here rather than after the benchmark.
 
-### Step 3: Capture timing data
+Subjective quality — tone, design taste, whether the prose lands — is not assertion material. Grade it by reading the outputs.
 
-When each subagent completes, the notification contains `total_tokens` and `duration_ms`. Save immediately to `timing.json` — this data is not persisted elsewhere and cannot be recovered later.
+Write the assertions into `eval_metadata.json` and `evals/evals.json`, and tell the user what they will see.
+
+### Step 3 — Capture timing as each run lands
+
+The completion notification carries `total_tokens` and `duration_ms`, and nothing else records them. Write `timing.json` immediately, per run; batching at the end loses the data.
 
 ```json
 {
@@ -120,169 +132,131 @@ When each subagent completes, the notification contains `total_tokens` and `dura
 }
 ```
 
-### Step 4: Grade outputs
+### Step 4 — Grade
 
-Read `agents/grader.md` from this skill's directory for the full grading protocol.
+Read `agents/grader.md`, then grade each run, writing `grading.json` beside its outputs. The `expectations` array must use the field names `text`, `passed`, `evidence` — the aggregation script and the review page both read those exact keys.
 
-The grader evaluates each assertion against the actual outputs, producing `grading.json` with `text`, `passed`, and `evidence` fields (the viewer depends on these exact names).
+For anything checkable mechanically, write a script and run it instead of reading the output and judging. A script is faster, reproducible, and reusable next iteration; eyeballing 30 assertions is where grading quietly becomes unreliable.
 
-For assertions that can be checked programmatically, write and run a script rather than eyeballing it — scripts are faster, more reliable, and reusable across iterations.
-
-### Step 5: Aggregate into benchmark
-
-Run the aggregation script from the skill-creator directory:
-```bash
-python -m scripts.aggregate_benchmark <workspace>/iteration-N --skill-name <name>
-```
-
-This produces `benchmark.json` and `benchmark.md` with pass_rate, time, and tokens per configuration, including mean +/- stddev and the delta. See `references/eval-schemas.md` for the exact schema the viewer expects.
-
-### Step 6: Analyst pass
-
-Read the benchmark data and surface patterns the aggregate stats might hide. Read `agents/analyzer.md` for what to look for:
-- Assertions that always pass regardless of skill (non-discriminating)
-- High-variance evals (possibly flaky)
-- Time/token tradeoffs
-- Surprising results that contradict expectations
-
-### Step 7: Launch the viewer
+### Step 5 — Aggregate
 
 ```bash
-nohup python <skill-creator-path>/eval-viewer/generate_review.py \
-  <workspace>/iteration-N \
-  --skill-name "my-skill" \
-  --benchmark <workspace>/iteration-N/benchmark.json \
-  > /dev/null 2>&1 &
-VIEWER_PID=$!
+python <this-skill>/scripts/aggregate_benchmark.py <workspace>/iteration-<N> --skill-name <name>
 ```
 
-For iteration 2+, add `--previous-workspace <workspace>/iteration-<N-1>`.
+Produces `benchmark.json` and `benchmark.md`: pass rate, time, and tokens per configuration, mean ± stddev, and the delta with_skill vs baseline. If you build the JSON by hand, follow `references/eval-schemas.md` — the review page depends on those field names. List every with-skill case before its baseline counterpart so the comparison reads straight.
 
-**Headless/Cowork:** Use `--static <output_path>` for a standalone HTML file.
+### Step 6 — Analyst pass
 
-Tell the user: "I've opened the results in your browser. The 'Outputs' tab lets you review each test case and leave feedback. The 'Benchmark' tab shows quantitative comparison. Come back when you're done."
+Read the numbers as a skeptic before showing them:
 
-### Step 8: Collect feedback
+- Assertions that pass in every configuration — non-discriminating, they inflate the pass rate without measuring anything
+- Cases whose results swing wildly across runs — flaky, not a skill effect
+- A pass-rate gain bought with a large token or time increase — a real trade-off, not a free win
+- Any result that contradicts what the transcripts look like
 
-When the user finishes, read `feedback.json`. Empty feedback means the user was satisfied. Focus improvements on test cases with specific complaints.
+`agents/analyzer.md` has the detail. Fold the observations into what you report; a bare table invites the user to over-read it.
+
+### Step 7 — Build the review page
 
 ```bash
-kill $VIEWER_PID 2>/dev/null
+python <this-skill>/scripts/build_review.py <workspace>/iteration-<N> \
+  --skill-name <name> \
+  --previous-iteration <workspace>/iteration-<N-1> \
+  -o <workspace>/iteration-<N>/review.html
 ```
 
----
+A single static HTML file: every case with its prompt, outputs, grading, and a feedback box. No server, no network, opens anywhere. The feedback box exports `feedback.json` when the user is done; save it into the iteration directory.
 
-## Phase 3: Iterate
+Get this in front of the human before you start revising on your own judgement. The person who knows the task will spot the wrong-shaped output in ten seconds, and every round you rewrite without their read is a round spent guessing.
 
-After collecting feedback, improve the skill and run again:
-
-1. Apply improvements to the skill
-2. Rerun all test cases into `iteration-<N+1>/`, including baseline runs
-3. Launch the viewer with `--previous-workspace` pointing at the previous iteration
-4. Wait for user review
-5. Read feedback, improve, repeat
-
-Keep going until:
-- The user is happy
-- All feedback is empty
-- No meaningful progress is being made
-
----
-
-## Mode: Blind Comparison (`--compare`)
-
-For rigorous A/B comparison between two skill versions. Requires subagents.
-
-### Step 1: Run both versions
-
-For each test case, spawn two subagents — one with each skill version. Label outputs A and B without revealing which version produced which.
-
-### Step 2: Blind evaluation
-
-Spawn a comparator subagent (read `agents/comparator.md`) that judges output quality without knowing which skill produced which output. The comparator scores on content (correctness, completeness, accuracy) and structure (organization, formatting, usability).
-
-### Step 3: Post-hoc analysis
-
-After the blind comparison determines a winner, spawn an analyzer subagent (read `agents/analyzer.md`) that "unblinds" the results. It examines both skills and transcripts to understand:
-- What made the winner better
-- What instruction differences led to the outcome
-- Actionable suggestions for improving the loser
-
-### Step 4: Report
-
-Present the comparison results: winner, scores, key differences, and improvement suggestions.
-
----
-
-## Mode: Description Optimization (`--trigger`)
-
-Optimize the skill's `description` field for better triggering accuracy.
-
-### Step 1: Generate trigger eval queries
-
-Create 20 eval queries — a mix of should-trigger (8-10) and should-not-trigger (8-10).
-
-**Should-trigger queries**: Different phrasings of the same intent — formal, casual, implicit. Include cases where users don't name the skill but clearly need it.
-
-**Should-not-trigger queries**: Near-misses that share keywords but need something different. These are the most valuable — naive keyword matching would trigger but shouldn't.
-
-All queries must be realistic — concrete, detailed, with personal context. Not "format this data" but a real-sounding request with file names, column references, backstory.
+### Step 8 — Read the feedback
 
 ```json
-[
-  {"query": "the user prompt", "should_trigger": true},
-  {"query": "another prompt", "should_trigger": false}
-]
+{
+  "reviews": [
+    {"run_id": "error-recovery-flow/with_skill", "feedback": "the table is missing a header row", "timestamp": "..."}
+  ],
+  "status": "complete"
+}
 ```
 
-### Step 2: Review with user
-
-Present the eval set using the HTML template from skill-creator (`assets/eval_review.html`). The user can edit queries, toggle should-trigger, and export the final set.
-
-### Step 3: Run the optimization loop
-
-```bash
-python -m scripts.run_loop \
-  --eval-set <path-to-trigger-eval.json> \
-  --skill-path <path-to-skill> \
-  --model <model-id-powering-this-session> \
-  --max-iterations 5 \
-  --verbose
-```
-
-This automatically splits into 60% train / 40% test, evaluates the current description (3 runs per query for reliability), proposes improvements, and iterates up to 5 times. The best description is selected by test score to avoid overfitting.
-
-### Step 4: Apply result
-
-Take `best_description` from the output and update the skill's frontmatter. Show before/after with scores.
+Empty feedback means that case looked fine. Weight the specific complaints — a complaint names something the metrics could not see, which is exactly why the human pass exists.
 
 ---
 
-## Mode: Grade Only (`--grade-only`)
+## Phase 3 — Iterate
 
-Grade existing outputs without re-running. Useful when outputs already exist from a previous run or manual testing.
+1. Apply the changes the feedback points at
+2. Rerun everything into `iteration-<N+1>/`, baselines included
+3. Build the review page with `--previous-iteration` so the user can compare
+4. Wait for review, read feedback, repeat
 
-Provide the workspace path. The grader reads transcripts and outputs from each run directory, evaluates against assertions in `eval_metadata.json`, and produces `grading.json`.
-
----
-
-## Environment Adaptations
-
-**Claude.ai** (no subagents):
-- Run test cases sequentially, one at a time — read the skill, then follow its instructions yourself
-- Skip baseline runs
-- Present results inline instead of using the browser viewer
-- Skip blind comparison and description optimization (requires `claude -p`)
-
-**Cowork** (no browser):
-- Use `--static <path>` for the viewer to generate standalone HTML
-- Feedback downloads as `feedback.json` via the "Submit All Reviews" button
+Stop when the user is satisfied, when feedback comes back empty, or when two rounds move nothing. A loop that keeps producing edits with no measurable gain is overfitting to the visible cases — check whether the next change would hold on a prompt you have not written yet.
 
 ---
 
-## Resource Reference
+## Mode — Blind comparison
 
-- `agents/grader.md` — How to evaluate assertions against outputs
-- `agents/comparator.md` — How to do blind A/B comparison
-- `agents/analyzer.md` — How to analyze benchmark results and why one version beat another
-- `references/eval-schemas.md` — JSON schemas for evals.json, grading.json, benchmark.json, timing.json
+To compare two versions properly, hide the labels:
+
+1. Run both versions on the same cases, into `A/` and `B/` directories, without recording which is which anywhere the comparator can read.
+2. Spawn a comparator subagent (`agents/comparator.md`) that scores content and structure on output quality alone.
+3. Once it commits to a winner, spawn an analyzer (`agents/analyzer.md`) to unblind and explain why: which instruction differences produced the difference in output.
+4. Report the winner, the scores, the reasoning, and the concrete edits suggested for the loser.
+
+Blinding matters most when the two versions are your own work, which is the usual case.
+
+---
+
+## Mode — Trigger measurement
+
+Answers "would this skill fire on the requests I care about". Uses judgement instead of an API loop, so it needs no CLI beyond the agent itself.
+
+1. **Write 20 queries.** 8-10 should trigger, 8-10 should not. Realistic, with paths, columns, company names, casual phrasing, typos — the way people actually type.
+2. **Make the negatives near-misses.** "Write a fibonacci function" against a PDF skill tests nothing; a request that shares the keywords but needs a different tool tests everything. A negative set of obviously irrelevant queries produces a meaningless 100%.
+3. **Split 60/40** into train and held-out test. Choose the best description by test score, not train — picking by train score is how a description gets tuned to the examples and fires on nothing in production.
+4. **Evaluate each query 3 times**, deciding from the description alone: given this request and this list of available skills, would you consult this one? Reading the skill body while judging gives a false positive, because the real router only sees the description.
+5. **Propose one improved description**, using the failures: missing scenario, missing keyword users would type, or too broad and stealing a near-miss.
+6. **Report the rates** — train and test, before and after — and the proposed description. Applying it changes what the skill fires on, so it needs explicit confirmation.
+
+`references/eval-schemas.md` has the query file shape.
+
+---
+
+## Mode — Grade only
+
+When outputs already exist from a previous run or manual testing: point at the workspace, grade against the assertions in each `eval_metadata.json`, write `grading.json`, aggregate, build the page. Same grading rules as Phase 2 Step 4 — script over eyeball wherever possible.
+
+---
+
+## Environment adaptations
+
+Work with what is available rather than stopping:
+
+- **No subagents** — run the cases yourself, one at a time, following the skill's own instructions. Less rigorous, since the author running their own skill has every bit of context, but it still catches the cases where the skill wastes half the run. Skip baselines; without independence they compare nothing.
+- **No browser** — `build_review.py` already writes a static file. Show the path, or paste the per-case summary into the conversation.
+- **No eval history** — start at iteration-1 with a baseline, and treat the first run as the reference point everything later is measured against.
+
+---
+
+## Failure modes
+
+- Running without a baseline, then reporting a pass rate that measures task difficulty
+- Assertions that pass either way, reported as coverage
+- Grading by reading instead of by script, then trusting the number
+- Prompts so simple the skill never loads, so the eval measures the bare model
+- Choosing a description by train score
+- Rewriting the skill from your own reading of the outputs before the human has looked
+- Reporting a benchmark table with no note that two of the four assertions were non-discriminating
+
+---
+
+## Resources
+
+- `scripts/aggregate_benchmark.py` — grading.json → benchmark.json/md with mean, stddev, delta
+- `scripts/build_review.py` — iteration directory → one static review page with feedback export
+- `agents/grader.md` — evaluate assertions against outputs, and criticize weak assertions
+- `agents/comparator.md` — blind A/B scoring
+- `agents/analyzer.md` — why the winner won, and what to change in the loser
+- `references/eval-schemas.md` — JSON shapes for evals, grading, benchmark, timing, trigger queries
