@@ -11,6 +11,7 @@ Exits 0 when every case matches, 1 otherwise. No external dependencies.
 import json
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 GATE = Path(__file__).with_name("check_loop.py")
@@ -71,9 +72,35 @@ CASES = [
         lambda o: o["verdict"] == "ALL_REJECTED",
     ),
     (
-        "backlogged claims end as ALL_REJECTED",
-        claims("src/a.ts:10 | defect | null deref", backlog=1),
-        lambda o: o["verdict"] == "ALL_REJECTED",
+        "backlogged-only claims with passing verification exit as PASS",
+        claims("src/a.ts:10 | consistency | naming", backlog=1, verification="passed"),
+        lambda o: o["endLoop"] and o["verdict"] == "PASS" and o["exitReason"] == "backlog-only-pass",
+    ),
+    (
+        "backlogged-only claims without verification exit as PASS_UNVERIFIED",
+        claims("src/a.ts:10 | consistency | naming", backlog=1, verification="not-run"),
+        lambda o: o["endLoop"] and o["verdict"] == "PASS_UNVERIFIED" and o["exitReason"] == "backlog-only-unverified",
+    ),
+    (
+        "rejected or waived claims with backlog still end as ALL_REJECTED",
+        claims(
+            "src/a.ts:10 | defect | x",
+            "src/a.ts:20 | consistency | y",
+            rejected=1,
+            backlog=1,
+            verification="passed",
+        ),
+        lambda o: o["endLoop"] and o["verdict"] == "ALL_REJECTED",
+    ),
+    (
+        "failed verification outranks no-accepted-claims exit",
+        claims("src/a.ts:10 | defect | x", rejected=1, verification="failed"),
+        lambda o: o["endLoop"] and o["verdict"] == "VERIFICATION_FAILED",
+    ),
+    (
+        "round-2 delta spike triggers divergence immediately",
+        claims("a | defect | a", "b | defect | b", accepted=2, round=2, novelty_history=[1]),
+        lambda o: o["divergenceWarning"] and o["dimensions"] == ["goal-alignment", "defect"],
     ),
     (
         "round limit yields NEEDS_FIXES",
@@ -183,7 +210,49 @@ def main():
     print(("PASS" if ok else "FAIL"), "invalid JSON exits non-zero without a verdict")
     failures += 0 if ok else 1
 
-    print(f"{len(CASES) + 1} cases, {failures} failure(s)")
+    with tempfile.TemporaryDirectory() as tmp:
+        state_file = Path(tmp) / "state.json"
+        state_file.write_text(
+            json.dumps(
+                {
+                    "round": 2,
+                    "novelty_history": [1],
+                    "settled_claims": ["src/old.ts:1 | consistency | style | backlog: minor"],
+                    "verification": "passed",
+                    "max_rounds": 10,
+                    "reviewer_mode": "isolated",
+                    "dimensions": ["goal-alignment", "defect", "completeness", "consistency", "security"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        state_payload = {
+            "reviewer_result": "NEEDS_FIXES",
+            "claim_keys": ["src/a.ts:10 | defect | null check", "src/b.ts:20 | defect | leak"],
+            "accepted_count": 2,
+            "rejected_count": 0,
+            "waived_count": 0,
+            "backlog_count": 0,
+        }
+        state_run = subprocess.run(
+            [sys.executable, str(GATE), "--state-file", str(state_file)],
+            input=json.dumps(state_payload),
+            capture_output=True,
+            text=True,
+        )
+        state_out = json.loads(state_run.stdout)
+        persisted = json.loads(state_file.read_text(encoding="utf-8"))
+        state_ok = (
+            state_run.returncode == 0
+            and state_out["novelty_history"] == [1, 2]
+            and state_out["divergenceWarning"] is True
+            and persisted["novelty_history"] == [1, 2]
+            and persisted["dimensions"] == ["goal-alignment", "defect"]
+        )
+        print(("PASS" if state_ok else "FAIL"), "--state-file merges and persists loop state", "" if state_ok else state_out)
+        failures += 0 if state_ok else 1
+
+    print(f"{len(CASES) + 2} cases, {failures} failure(s)")
     return 1 if failures else 0
 
 

@@ -15,8 +15,10 @@ $REVIEW_LOOP_DIR/
   state.json          # the ledger; written by the main agent after each gate call
   changes.patch       # pre-loop `git diff HEAD`
   status.txt          # pre-loop `git status --porcelain`
-  seen-snapshot       # stash-create id of the state the reviewer last read
-  seen-untracked      # untracked paths already sent to the reviewer
+  seen.index          # temporary Git index used for tracked + untracked tree snapshots
+  current.index       # temporary Git index built before each round-2+ patch diff
+  seen-snapshot       # git write-tree hash of the workspace state the reviewer last read
+  candidate-snapshot  # git write-tree hash promoted to seen-snapshot when round returns
   round-N.patch       # patch since the previous snapshot, sent to the reviewer
   backlog.md          # medium/low claims parked outside the loop
   round-1.reviewer.md # raw Reviewer output, append-only

@@ -5,8 +5,10 @@ Read this when you first call the gate, when a call comes back `Rejected:`, or w
 `$SKILL_DIR` is the directory containing this skill's SKILL.md. Always invoke with an absolute path — the current working directory is the user's project, not the skill:
 
 ```bash
-python3 "$SKILL_DIR/scripts/check_loop.py"
+python3 "$SKILL_DIR/scripts/check_loop.py" --state-file "$REVIEW_LOOP_DIR/state.json"
 ```
+
+When `--state-file` is passed and `state.json` exists, `check_loop.py` reads any omitted continuity fields (`round`, `novelty_history`, `settled_claims`, `max_rounds`, `reviewer_mode`, `verification`) from `state.json` and atomically writes back updated `novelty_history`, `settled_claims`, `dimensions`, and `verification` after any non-rejected call. Without `--state-file`, pass all fields explicitly via stdin.
 
 After any change to the gate or to this contract, run `python3 "$SKILL_DIR/scripts/test_check_loop.py"`: it exercises every verdict path, the rejection paths, novelty computation, and history continuity.
 
@@ -38,7 +40,7 @@ The four counts must sum to `len(claim_keys)`. The gate rejects the call otherwi
 | `exitReason` | `reviewer-pass` \| `reviewer-pass-unverified` \| `verification-failed` \| `no-accepted-claims` \| `max-rounds` \| `null`. |
 | `reason` | Human-readable explanation, including counts. |
 | `independent` | `false` when the main agent reviewed its own work. |
-| `divergenceWarning` | New-claim counts rose across the last three rounds. |
+| `divergenceWarning` | A delta round raised more new claims than the prior round, or three rounds failed to decrease (`<=`) with non-zero new claims. |
 | `dimensions` | The review dimensions for the next round: all five, or `goal-alignment` + `defect` once diverging. |
 | `newClaimCount` | Claims this round that were not already settled. |
 | `counts` | Echo of the four adjudication counts. |
@@ -54,9 +56,11 @@ A `Rejected:` call is bad input, not a verdict: fix the fields and call again.
 2. `PASS` + `verification: "failed"` → `VERIFICATION_FAILED`. A failing check outranks a reviewer verdict; the loop ends and the failure is the headline.
 3. `PASS` + `verification: "not-run"` → `PASS_UNVERIFIED`. No check exists, so the review is labelled unverified rather than proven.
 4. `PASS` + `verification: "passed"` → `PASS`.
-5. `accepted_count == 0` → `ALL_REJECTED`. Nothing will be fixed: the claims were rejected, waived, or backlogged. Not a clean pass.
-6. `round >= max_rounds` → `NEEDS_FIXES`, with the accepted-but-unfixed count.
-7. Otherwise → continue.
+5. `accepted_count == 0` with `verification: "failed"` → `VERIFICATION_FAILED`. A failing check outranks a no-accepted-claims exit.
+6. `accepted_count == 0` with `rejected_count == 0`, `waived_count == 0`, and `backlog_count > 0` → `PASS` (or `PASS_UNVERIFIED` when `verification: "not-run"`). Non-blocking backlog suggestions alone do not fail a loop.
+7. `accepted_count == 0` (with at least one `rejected` or `waived` claim) → `ALL_REJECTED`. Disputed/waived claims were not fixed; not a clean pass.
+8. `round >= max_rounds` → `NEEDS_FIXES`, with the accepted-but-unfixed count.
+9. Otherwise → continue.
 
 `PASS` requires empty `claim_keys` and all four counts at zero.
 
@@ -66,7 +70,7 @@ A `Rejected:` call is bad input, not a verdict: fix the fields and call again.
 
 Novelty is computed, not reported: the gate compares each claim identity against the first three fields of every `settled_claims` entry, ignoring case and whitespace. A settled claim that comes back does not count as new.
 
-Divergence fires when the last three novelty counts are strictly increasing — that means the Reviewer keeps finding genuinely fresh problems, so the loop is expanding rather than converging. The gate then pins `dimensions` to `goal-alignment` and `defect`: style and consistency hunting stops before the round budget is spent.
+Divergence fires early when a delta round produces strictly more new claims than the prior round (`novelty_history[-1] > novelty_history[-2]`), or when three consecutive rounds fail to decrease (`novelty_history[-3] <= novelty_history[-2] <= novelty_history[-1]` with non-zero new claims). The gate then pins `dimensions` to `goal-alignment` and `defect`: style and consistency hunting stops before the round budget is spent.
 
 ## Worked example
 

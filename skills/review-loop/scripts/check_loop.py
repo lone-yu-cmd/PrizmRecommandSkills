@@ -61,7 +61,9 @@ Divergence: new-claim counts strictly increasing across the last three rounds
 goal-alignment + defect so the next round stops hunting style nits.
 """
 
+import argparse
 import json
+from pathlib import Path
 import sys
 
 DEFAULT_MAX_ROUNDS = 10
@@ -144,11 +146,16 @@ def error_response(
 
 
 def check_divergence(novelty_history):
-    """True when the last three novelty counts are strictly increasing."""
-    if len(novelty_history) < 3:
-        return False
-    last_three = novelty_history[-3:]
-    return last_three[0] < last_three[1] < last_three[2]
+    """True when a delta round produces strictly more new claims than the prior round, or three rounds fail to decrease."""
+    if len(novelty_history) >= 2 and novelty_history[-1] > novelty_history[-2]:
+        return True
+    if (
+        len(novelty_history) >= 3
+        and novelty_history[-1] > 0
+        and novelty_history[-3] <= novelty_history[-2] <= novelty_history[-1]
+    ):
+        return True
+    return False
 
 
 def check_exit_condition(data):
@@ -357,6 +364,40 @@ def check_exit_condition(data):
         }
 
     if counts["accepted_count"] == 0:
+        if verification == "failed":
+            return {
+                **common,
+                "verdict": "VERIFICATION_FAILED",
+                "exitReason": "verification-failed",
+                "reason": (
+                    f"Round {current_round}: no claim was accepted to fix, and the last verification run failed. "
+                    "A failed check outranks a no-accepted-claims exit."
+                ),
+            }
+        if (
+            counts["rejected_count"] == 0
+            and counts["waived_count"] == 0
+            and counts["backlog_count"] > 0
+        ):
+            if verification == "not-run":
+                return {
+                    **common,
+                    "verdict": "PASS_UNVERIFIED",
+                    "exitReason": "backlog-only-unverified",
+                    "reason": (
+                        f"Round {current_round}: all {counts['backlog_count']} claim(s) were non-blocking backlog items "
+                        "with no verification run."
+                    ),
+                }
+            return {
+                **common,
+                "verdict": "PASS",
+                "exitReason": "backlog-only-pass",
+                "reason": (
+                    f"Round {current_round}: all {counts['backlog_count']} claim(s) were non-blocking backlog items "
+                    "and verification passed"
+                ),
+            }
         return {
             **common,
             "verdict": "ALL_REJECTED",
@@ -391,7 +432,56 @@ def check_exit_condition(data):
     }
 
 
+STATE_SYNC_KEYS = (
+    "round",
+    "novelty_history",
+    "settled_claims",
+    "max_rounds",
+    "reviewer_mode",
+    "verification",
+)
+
+
+def load_and_merge_state(data, state_path):
+    """Merge missing caller-state fields from state_path into data."""
+    if not state_path or not state_path.exists():
+        return None
+    state_data = json.loads(state_path.read_text(encoding="utf-8"))
+    if not isinstance(state_data, dict):
+        raise ValueError("state file must contain a JSON object")
+    if isinstance(data, dict):
+        for key in STATE_SYNC_KEYS:
+            if key not in data and key in state_data:
+                data[key] = state_data[key]
+    return state_data
+
+
+def persist_state(state_path, state_data, data, result):
+    """Write updated gate fields back to state_path when the call succeeded."""
+    if state_path is None or state_data is None:
+        return
+    reason = str(result.get("reason", ""))
+    if result.get("verdict") is None and reason.startswith("Rejected:"):
+        return
+    state_data["novelty_history"] = result["novelty_history"]
+    state_data["settled_claims"] = result["settled_claims"]
+    state_data["dimensions"] = result["dimensions"]
+    state_data["verification"] = data.get(
+        "verification", state_data.get("verification", "not-run")
+    )
+    state_path.write_text(json.dumps(state_data, indent=2) + "\n", encoding="utf-8")
+
+
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--state-file",
+        type=Path,
+        default=None,
+        help="Optional state.json path to read missing loop fields from and update in place.",
+    )
+    args = parser.parse_args()
+
     try:
         data = json.load(sys.stdin)
     except json.JSONDecodeError as e:
@@ -417,7 +507,17 @@ def main():
         )
         sys.exit(1)
 
-    print(json.dumps(check_exit_condition(data)))
+    state_data = None
+    if args.state_file is not None:
+        try:
+            state_data = load_and_merge_state(data, args.state_file)
+        except (OSError, json.JSONDecodeError, ValueError) as e:
+            print(json.dumps(error_response(f"Invalid state file: {e}")))
+            sys.exit(1)
+
+    result = check_exit_condition(data)
+    persist_state(args.state_file, state_data, data, result)
+    print(json.dumps(result))
 
 
 if __name__ == "__main__":
