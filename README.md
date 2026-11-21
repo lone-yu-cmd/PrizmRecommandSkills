@@ -158,6 +158,33 @@ Extract and summarize what a video actually says from a Bilibili, Douyin, YouTub
 
 Requires `yt-dlp`, `ffmpeg`, and (when there are no captions) `faster-whisper`.
 
+### social-content-parser
+
+Parse public short-video and social share URLs into structured local content packages (`report.md`, `normalized.json`, `raw.json`, and downloaded media) using dedicated parsers for Xiaohongshu, Douyin, Bilibili, and X/Twitter plus an aggregated fallback across 20+ platforms.
+
+**Usage:**
+```
+https://www.xiaohongshu.com/explore/xxxx 帮我解析这个链接的内容
+```
+
+### product-iterate
+
+Walk an existing product's source code and user journeys from the customer's perspective, surface pain points and unmet needs, and list concrete iteration ideas without writing implementation code.
+
+**Usage:**
+```
+/product-iterate 从用户角度看看这个软件还能继续迭代什么功能？
+```
+
+### prizmkit-git-issue-workflow
+
+Scan all open GitHub issues on a project repository, run `/prizmkit-workflow` serially per issue to create separate commits, list changes for user verification, push only on test branches with CI/CD configured, and close verified issues.
+
+**Usage:**
+```
+/prizmkit-git-issue-workflow 拉取当前仓库所有开放 issue 并按流程逐条修复提交
+```
+
 ## License
 
 MIT

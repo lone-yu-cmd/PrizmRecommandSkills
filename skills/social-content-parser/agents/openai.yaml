@@ -1,0 +1,4 @@
+interface:
+  display_name: "Social Content Parser"
+  short_description: "Parse social links and optionally transcribe their videos"
+  default_prompt: "Use $social-content-parser to parse a public social share URL into a local package, and transcribe its video only when I explicitly request transcription."
