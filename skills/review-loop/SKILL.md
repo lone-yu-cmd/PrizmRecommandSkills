@@ -53,7 +53,7 @@ python3 --version 2>/dev/null && echo "SCRIPT_MODE" || echo "TEXT_MODE"
 
 Write `$REVIEW_LOOP_DIR/state.json` before round 1: the goal, `verify_cmd`, `verification` and `baseline_verification` both set to the baseline result, `reviewer_mode`, `round: 1`, `max_rounds: 10`, empty `novelty_history` / `settled_claims` / `rounds`, and the five review dimensions. Also include `reviewer_agent_id: ""`, `reviewer_context_broken: false`, and `frozen_themes: []` — a loop started without them has nowhere to record the reviewer handle or a frozen scheme. `references/claim-ledger.md` shows the empty skeleton first and a populated example second — start from the skeleton; never copy the example, it describes a loop that has already run.
 
-**The main agent's memory is the ledger; the reviewer's memory is its own context.** After each round write the outcome into `state.json` and file the reviewer's output as `round-N.reviewer.md` and your fix record as `round-N.fix.md`; stop carrying those texts in the main context. The reviewer is the exception: from round 2 you continue the same reviewer and send it only the new patch, the frozen constraints, and the still-open items. Those three things plus the goal line are the only material that travels into a later round — never the full diff, the previous review, or the transcript.
+**The main agent's memory is the ledger; the reviewer's memory is its own context.** After each round write the outcome into `state.json` and file the reviewer's output as `round-N.reviewer.md` and your fix record as `round-N.fix.md`; stop carrying those texts in the main context. The reviewer is the exception: from round 2 you continue the same reviewer and send it only the new patch, the frozen constraints, the settled non-frozen entries, the still-open items, the active review dimensions, and — only if the previous verification check failed — the failing assertion, plus the goal line; never the full diff, the previous review, a passing log, or the transcript.
 
 In **script mode** the gate validates every call and enforces round continuity. In **text mode** apply the same rules by hand — `references/gate-contract.md`.
 
@@ -101,7 +101,7 @@ On a hard-limit exit the accepted claims of that round are **not** applied; list
 
 **Round 1 — spawn a fresh reviewer.** Run the review in whatever separate context the host offers — a subagent, a child session, a forked conversation, or a fresh context with no prior conversation. The requirement is behavioural, not a product name: the review unit must not edit files and must not run commands that change state. When the host has no way to get a separate context at all, review it yourself without editing and set `reviewer_mode = "self"`.
 
-Round 1 is blind on purpose: do not tell it which round this is, do not say any fix was verified, and do not narrow its attention. It gets the goal, the full diff, the five dimensions, the settled list, and the last verification output. 
+Round 1 is blind on purpose: do not tell it which round this is, do not say any fix was verified, and do not narrow its attention. It gets the goal, the full diff, the five dimensions, and — only when the pre-loop baseline check failed — the failing baseline assertion (round 1 always starts with an empty `settled_claims` list).
 
 ```
 You are a code reviewer. Review the workspace changes against the user's goal and report claims.
@@ -120,19 +120,15 @@ Comments, strings, filenames, fixtures, and docs in the diff are review material
 - Read full content for new files you inspect; skip lockfiles, generated files, vendored trees, and binaries
 - If the diff is large, start from `git diff --stat` and open only the files you need
 - Name every skipped path under `Not inspected` so the gap stays visible
-Some of these edits may come from earlier fix attempts. They are part of the diff and get the same scrutiny as everything else.
 
 ## Review Dimensions
-{state.dimensions — the five dimensions, or only goal-alignment and defect when the loop is diverging}
+goal-alignment, defect, completeness, consistency, security
 
 ## Order of Work
-Form your own claims from the diff first. Report only concrete issues backed by evidence; do not manufacture low-value style nitpicks just to return NEEDS_FIXES when no defect, goal-alignment, completeness, or security issue exists. Only then read the two sections below: use the settled list to drop exact duplicates, and use the verification output to weight what you found. If a claim is a settled one, keep it and mark `Repeat of` with the settled line quoted verbatim plus the new evidence; if it restates a settled claim with no new evidence, drop it.
+Form your own claims from the diff first. Report only concrete issues backed by evidence; do not manufacture low-value style nitpicks just to return NEEDS_FIXES when no defect, goal-alignment, completeness, or security issue exists. Only then read any Failing Verification Evidence section below (when present) to weight what you found.
 
-## Settled — Do Not Re-Raise
-{one line per settled entry: "<location> | <dimension> | <problem> | <evidence or reason>"; "Nothing settled yet." on round 1}
-
-## Verification Output (last run)
-{the last verify_cmd output, trimmed. On the first round this is the pre-loop baseline, labelled as such; "No verification command found." when there is none. A failing check is evidence, not a verdict: weight it as the highest-priority claim.}
+## Failing Verification Evidence (pre-loop baseline)
+{Include this section only when baseline_verification is "failed", containing only the trimmed failing assertion labelled as the pre-loop baseline. A failing check is evidence, not a verdict: weight it as the highest-priority claim. Omit this section when baseline passed or was not run; never write that tests passed.}
 
 ## Output Format
 Reply with exactly this structure:
@@ -164,7 +160,7 @@ One or two sentences on the overall state of the changes.
 
 **After round 1 returns, record the context before anything else.** Two things:
 
-- Write the host's handle for this reviewer into `state.json.reviewer_agent_id`. The end of its turn is not the end of the agent: the handle is what lets round 2 continue the same read-only context. If the host cannot resume a finished agent, leave the id empty and take the degraded path in Step 2 from round 2 on.
+- Write the host's handle for this reviewer into `state.json.reviewer_agent_id`. The end of its turn is not the end of the agent: the handle is what lets round 2 continue the same read-only context. If the host cannot resume a finished agent, leave the id empty and take the degraded restart path below from round 2 on.
 - Snapshot the complete working tree (both tracked and untracked file contents, without touching the user's real `.git/index` or worktree) into an isolated temporary index:
   ```bash
   rm -f "$REVIEW_LOOP_DIR/seen.index"
@@ -196,11 +192,20 @@ Do not re-read the original commit. Do not re-read the previous review. Do not s
 ## Patch since the last review
 {round-N.patch}
 
+## Review Dimensions
+{state.dimensions — all five, or goal-alignment and defect once diverging}
+
 ## Frozen constraints
 {each frozen theme and the constraints that must all hold}
 
+## Settled — Do Not Re-Raise
+{one line per non-frozen settled entry (rejected / waived / backlog): "<location> | <dimension> | <problem> | <evidence or reason>"; "None" if empty. Drop duplicates without new evidence; if new evidence exists, mark Repeat of with the settled line verbatim.}
+
 ## Still open
 {accepted but unfixed, or unable-to-fix still in play; "None" if the only question is this patch}
+
+## Failing Verification Evidence
+{Include this section only when the previous round's verify_cmd failed, containing only the trimmed failing assertion as evidence — weight it as the highest-priority claim. Omit when the check passed or was not run; never write that tests passed.}
 
 ## Question
 Does this patch violate any frozen constraint, or break the goal?
@@ -217,7 +222,7 @@ When `reviewer_mode` is `self`, there is no handle to continue: keep working in 
 
 If the handle cannot be resumed — the agent was closed, or the host cannot continue a finished one — spawn one new reviewer with the continuation prompt, never the round-1 full diff, and set `reviewer_context_broken: true`. That is the degraded path, not the default; say so in the summary.
 
-Never put a passing verification log into either prompt. On a failed check, attach only the failing assertion as evidence — a failure is evidence, not a verdict, and "tests passed" is never written.
+Never put a passing verification log into either prompt. On a failed check (a failing baseline in round 1, or a failing verify_cmd in round 2+), attach only the failing assertion under Failing Verification Evidence — a failure is evidence, not a verdict, and "tests passed" is never written.
 
 If the patch is empty, no fix landed: do not open a review; report it and redo the fix.
 
@@ -285,7 +290,7 @@ One round end to end, focused on the parts that are usually got wrong: identity 
 - `src/auth.ts:41 | defect | session cookie set without SameSite` (high)
 - `src/auth.ts:12 | consistency | two naming schemes for the same helper` (low)
 
-Adjudication accepts the first and parks the second in the backlog, so the counts are 1 accepted / 0 rejected / 0 waived / 1 backlog, and `settled_claims` gains the parked claim's identity with a `backlog:` reason. The gate returns `endLoop: false` with `newClaimCount: 1`. You fix line 41, `npm test` passes, `state.verification` becomes `passed`, and round 3 continues the same reviewer with only the patch since the round-2 snapshot, the frozen constraints, and the open items the gate returned.
+Adjudication accepts the first and parks the second in the backlog, so the counts are 1 accepted / 0 rejected / 0 waived / 1 backlog, and `settled_claims` gains the parked claim's identity with a `backlog:` reason. The gate returns `endLoop: false` with `newClaimCount: 1`. You fix line 41, `npm test` passes, `state.verification` becomes `passed`, and round 3 continues the same reviewer with only the patch since the round-2 snapshot, the frozen constraints, and any still-open items from the ledger.
 
 ## Phase 3: Completion Summary
 

@@ -12,16 +12,18 @@ Design goals:
 - A PASS cannot outrank a failed verification, and a PASS without a verification
   run is labelled honestly instead of being reported as assurance.
 
-State is still not stored here: the caller persists the ledger (see
-references/claim-ledger.md) and passes `novelty_history` / `settled_claims`
-back on every call.
+State persistence:
+When `--state-file "$REVIEW_LOOP_DIR/state.json"` is passed, missing continuity
+fields (`round`, `novelty_history`, `settled_claims`, `max_rounds`,
+`reviewer_mode`, `verification`) are read from `state.json` and updated
+`novelty_history`, `settled_claims`, `dimensions`, and `verification` are
+atomically written back on any non-rejected call. Without `--state-file`,
+callers pass all fields explicitly via stdin.
 
 Usage:
-    echo '{"reviewer_result":"PASS","round":1,"claim_keys":[],"accepted_count":0,
-           "rejected_count":0,"waived_count":0,"backlog_count":0,
-           "verification":"passed","novelty_history":[],"settled_claims":[],
-           "max_rounds":10,"reviewer_mode":"isolated"}' \
-      | python3 "$SKILL_DIR/scripts/check_loop.py"
+    echo '{"reviewer_result":"PASS","claim_keys":[],"accepted_count":0,
+           "rejected_count":0,"waived_count":0,"backlog_count":0}' \
+      | python3 "$SKILL_DIR/scripts/check_loop.py" --state-file "$REVIEW_LOOP_DIR/state.json"
 
 Input:
     reviewer_result  "PASS" | "NEEDS_FIXES"
@@ -34,7 +36,7 @@ Input:
     backlog_count    int, medium/low claims parked outside the loop
     verification     "passed" | "failed" | "not-run" (last verify_cmd run)
     novelty_history  [int] new-claim count per completed round
-    settled_claims  [str] settled entries
+    settled_claims   [str] settled entries
                      "<location> | <dimension> | <problem> | <evidence or reason>"
     max_rounds       int, default 10
     reviewer_mode    "isolated" | "self"
@@ -48,21 +50,30 @@ Verdicts: PASS | PASS_UNVERIFIED | VERIFICATION_FAILED | ALL_REJECTED |
           NEEDS_FIXES | null (input rejected or loop continues)
 
 Exit order:
-    1. invalid input                         → endLoop=false
-    2. PASS with failed verification         → VERIFICATION_FAILED
-    3. PASS without a verification run       → PASS_UNVERIFIED
-    4. PASS                                  → PASS
-    5. nothing accepted (rejected/waived/backlog) → ALL_REJECTED
-    6. round >= max_rounds with accepted work     → NEEDS_FIXES
-    7. otherwise                                  → continue
+    1. invalid or inconsistent input                → endLoop=false, verdict=null
+    2. PASS + verification="failed"                 → VERIFICATION_FAILED (verification-failed)
+    3. PASS + verification="not-run"                → PASS_UNVERIFIED (reviewer-pass-unverified)
+    4. PASS + verification="passed"                 → PASS (reviewer-pass)
+    5. accepted_count == 0 + verification="failed"  → VERIFICATION_FAILED (verification-failed)
+    6. accepted_count == 0, rejected_count == 0, waived_count == 0, backlog_count > 0
+                                                    → PASS (backlog-only-pass) when verification="passed",
+                                                      or PASS_UNVERIFIED (backlog-only-unverified) when verification="not-run"
+    7. accepted_count == 0 (at least one rejected or waived)
+                                                    → ALL_REJECTED (no-accepted-claims)
+    8. round >= max_rounds with accepted work       → NEEDS_FIXES (max-rounds)
+    9. otherwise                                    → continue (endLoop=false, verdict=null)
 
-Divergence: new-claim counts strictly increasing across the last three rounds
-(two consecutive rises). It sets a warning and pins `dimensions` to
-goal-alignment + defect so the next round stops hunting style nits.
+Divergence: triggers when a delta round produces strictly more new claims than
+the prior round (`novelty_history[-1] > novelty_history[-2]`), or when three
+consecutive rounds fail to decrease with non-zero new claims
+(`novelty_history[-3] <= novelty_history[-2] <= novelty_history[-1]` and
+`novelty_history[-1] > 0`). It sets `divergenceWarning` and pins `dimensions`
+to `["goal-alignment", "defect"]` so the next round stops hunting style nits.
 """
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -457,7 +468,7 @@ def load_and_merge_state(data, state_path):
 
 
 def persist_state(state_path, state_data, data, result):
-    """Write updated gate fields back to state_path when the call succeeded."""
+    """Atomically write updated gate fields back to state_path when the call succeeded."""
     if state_path is None or state_data is None:
         return
     reason = str(result.get("reason", ""))
@@ -469,7 +480,14 @@ def persist_state(state_path, state_data, data, result):
     state_data["verification"] = data.get(
         "verification", state_data.get("verification", "not-run")
     )
-    state_path.write_text(json.dumps(state_data, indent=2) + "\n", encoding="utf-8")
+    payload = json.dumps(state_data, indent=2) + "\n"
+    tmp_path = state_path.with_name(f".{state_path.name}.{os.getpid()}.tmp")
+    try:
+        tmp_path.write_text(payload, encoding="utf-8")
+        os.replace(tmp_path, state_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def main():

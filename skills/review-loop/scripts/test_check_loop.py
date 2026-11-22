@@ -82,6 +82,11 @@ CASES = [
         lambda o: o["endLoop"] and o["verdict"] == "PASS_UNVERIFIED" and o["exitReason"] == "backlog-only-unverified",
     ),
     (
+        "backlog-only claims with failed verification exit as VERIFICATION_FAILED",
+        claims("src/a.ts:10 | consistency | naming", backlog=1, verification="failed"),
+        lambda o: o["endLoop"] and o["verdict"] == "VERIFICATION_FAILED",
+    ),
+    (
         "rejected or waived claims with backlog still end as ALL_REJECTED",
         claims(
             "src/a.ts:10 | defect | x",
@@ -130,6 +135,16 @@ CASES = [
             novelty_history=[1, 2, 3],
         ),
         lambda o: o["divergenceWarning"] and o["dimensions"] == ["goal-alignment", "defect"],
+    ),
+    (
+        "three non-decreasing non-zero rounds trigger divergence",
+        claims("a | defect | a", accepted=1, round=3, novelty_history=[1, 1]),
+        lambda o: o["divergenceWarning"] and o["dimensions"] == ["goal-alignment", "defect"],
+    ),
+    (
+        "three zero-novelty rounds do not trigger divergence",
+        claims(**PASS, round=3, novelty_history=[0, 0], verification="passed"),
+        lambda o: not o["divergenceWarning"] and len(o["dimensions"]) == 5,
     ),
     (
         "a short novelty history is rejected",

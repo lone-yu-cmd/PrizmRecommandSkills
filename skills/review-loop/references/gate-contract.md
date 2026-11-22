@@ -37,7 +37,7 @@ The four counts must sum to `len(claim_keys)`. The gate rejects the call otherwi
 |---|---|
 | `endLoop` | The only exit authority. |
 | `verdict` | `PASS` \| `PASS_UNVERIFIED` \| `VERIFICATION_FAILED` \| `ALL_REJECTED` \| `NEEDS_FIXES` \| `null`. Render verbatim. |
-| `exitReason` | `reviewer-pass` \| `reviewer-pass-unverified` \| `verification-failed` \| `no-accepted-claims` \| `max-rounds` \| `null`. |
+| `exitReason` | `reviewer-pass` \| `reviewer-pass-unverified` \| `backlog-only-pass` \| `backlog-only-unverified` \| `verification-failed` \| `no-accepted-claims` \| `max-rounds` \| `null`. |
 | `reason` | Human-readable explanation, including counts. |
 | `independent` | `false` when the main agent reviewed its own work. |
 | `divergenceWarning` | A delta round raised more new claims than the prior round, or three rounds failed to decrease (`<=`) with non-zero new claims. |
@@ -114,9 +114,9 @@ echo '{"reviewer_result":"PASS","round":3,"claim_keys":[],
 
 Apply the same rules by hand and state the verdict in the transcript:
 
-1. Reject calls with `round < 1`, an unknown enum, non-integer counts, counts that do not sum to the claim count, a malformed claim or waiver entry, `PASS` with claims, `NEEDS_FIXES` without claims, or a novelty history whose length is not `round - 1`.
-2. Verdict in this order: `VERIFICATION_FAILED` (PASS + failed), `PASS_UNVERIFIED` (PASS + not-run), `PASS`, `ALL_REJECTED` (nothing accepted), `NEEDS_FIXES` (round limit), otherwise continue.
+1. Reject calls with `round < 1`, an unknown enum, non-integer counts, counts that do not sum to the claim count, a malformed claim or settled entry, `PASS` with claims, `NEEDS_FIXES` without claims, or a `novelty_history` shorter than `round - 1` (truncate stale entries beyond `round - 1` and flag `historyRepaired`).
+2. Verdict in this order: `VERIFICATION_FAILED` (`PASS` + `failed`), `PASS_UNVERIFIED` (`PASS` + `not-run`), `PASS` (`PASS` + `passed`), `VERIFICATION_FAILED` (`accepted_count == 0` + `failed`), `PASS` / `PASS_UNVERIFIED` (`accepted_count == 0` with `rejected_count == 0`, `waived_count == 0`, and `backlog_count > 0`), `ALL_REJECTED` (`accepted_count == 0` with at least one `rejected` or `waived` claim), `NEEDS_FIXES` (`round >= max_rounds`), otherwise continue.
 3. Compute novelty against the first three fields of each settled entry; append exactly one entry per round.
-4. When the last three novelty counts rise, reduce the review dimensions to goal-alignment and defect.
+4. When a delta round produces strictly more new claims than the prior round (`novelty[-1] > novelty[-2]`), or three consecutive rounds fail to decrease with non-zero new claims (`novelty[-3] <= novelty[-2] <= novelty[-1]` and `novelty[-1] > 0`), set `divergenceWarning` and reduce the review dimensions to `goal-alignment` and `defect`.
 
 Declaring a verdict without running a round is invalid in text mode exactly as it is in script mode.
