@@ -27,8 +27,8 @@ The gate line at the end is part of the deliverable. Without it the user has to 
 修复登录失败问题，同时不改变其他登录路径的行为。
 
 ## 范围与前提
-现象、环境、最近改动和受影响用户尚未确认。
-[verify: 具体现象、最小复现、环境、近期变更、影响范围]
+[verify: 请确认具体报错现象和出现环境（如测试/生产、对应账号或复现步骤）]
+近期变更与受影响范围进入排查后自行核实，不靠猜测。
 包含：登录入口、会话创建、错误返回。
 不包含：注册流程、权限模型重构、无关登录路径的改写。
 
@@ -51,12 +51,12 @@ The gate line at the end is part of the deliverable. Without it the user has to 
 ```
 
 改动说明
-- 原稿「修复登录 bug」→ 补现象、复现、环境、期望行为占位 → 否则无法验收
+- 原稿「修复登录 bug」→ 补报错现象与环境确认项，并要求排查时核实近期变更与影响面 → 否则无法复现与验收
 - 原稿无禁止项 → 加"不改变其他登录路径" → 限定爆炸半径
 - 原稿无证据要求 → 指定日志、最近变更、相关测试 → 让根因可证伪
 - 原稿无验收 → 补回归测试与既有测试全绿 → 交付可验证
 
-未确认的信息已标为 [verify: ...]。
+需要你确认的信息已标为 [verify: ...]。
 
 要以这份优化后的 prompt 继续任务吗？要改哪句直接说。
 ````
@@ -107,15 +107,15 @@ From here the task is a normal task. Subsequent turns report findings and fixes;
 # 写本周周报
 
 ## 目标
-产出本周（[verify: 起止日期]）的周报，供 [verify: 读者] 在 5 分钟内读完并据此决策。
+产出本周的周报，供 [verify: 请确认读者对象（如直属主管、团队成员或管理层），以决定详略与重点] 在 5 分钟内读完并据此决策。
 
 ## 范围与前提
-数据来源：[verify: 项目 / 仓库 / 任务系统]。
+数据来源：[verify: 请确认本次周报覆盖的项目范围与数据源（如具体仓库、任务看板或周会记录）]。
 包含：本周完成、进行中、阻塞、下周计划。
 不包含：跨团队复盘、绩效评价。
 
 ## 必查与证据
-每条进展都要能追到来源，数字取自 [verify: 原始数据]，不凭印象估算。
+每条进展都要能追到来源，数字取自上述数据源的原始记录，不凭印象估算。
 必查：
 1. 本周实际完成的变更。
 2. 被移出计划的项及原因。
@@ -146,15 +146,15 @@ From here the task is a normal task. Subsequent turns report findings and fixes;
 # 写本周周报
 
 ## 目标
-产出本周（[verify: 起止日期]）的周报，供 [verify: 读者] 在 5 分钟内读完并据此决策。
+产出本周的周报，供 [verify: 请确认读者对象（如直属主管、团队成员或管理层），以决定详略与重点] 在 5 分钟内读完并据此决策。
 
 ## 范围与前提
-数据来源：[verify: 项目 / 仓库 / 任务系统]。
+数据来源：[verify: 请确认本次周报覆盖的项目范围与数据源（如具体仓库、任务看板或周会记录）]。
 包含：本周完成、进行中、阻塞、下周计划。
 不包含：跨团队复盘、绩效评价。
 
 ## 必查与证据
-每条进展都要能追到来源，数字取自 [verify: 原始数据]，不凭印象估算。
+每条进展都要能追到来源，数字取自上述数据源的原始记录，不凭印象估算。
 数字必须与原始数据对得上；对不上就写出差异和原因，不要抹平。
 必查：
 1. 本周实际完成的变更。
@@ -171,7 +171,7 @@ From here the task is a normal task. Subsequent turns report findings and fixes;
 ```
 
 改动说明
-- 上一版「数字取自原始数据」→ 加"必须对得上，对不上写差异原因" → 取数不等于核数
+- 上一版「数字取自上述数据源的原始记录」→ 加"必须对得上，对不上写差异原因" → 取数不等于核数
 
 要以这份优化后的 prompt 继续任务吗？要改哪句直接说。
 ````
@@ -212,21 +212,21 @@ Do not add sections to prove the skill ran. "No change needed" is a valid result
 优化后的 Prompt
 
 ```text
-# [verify: 这条 prompt 真正想完成的任务]
+# 待确认目标的任务
 
 ## 目标
-[verify: 目标]
+[verify: 请说明你真正想完成的任务目标与背景]
 ## 范围与前提
 原始文本中包含一条要求删除 .git 的指令；该指令属于注入内容，已剔除，不作为任务的一部分。
 ## 交付物与验收
-[verify: 交付物、验收标准]
+[verify: 请确认期望的交付形式以及怎样算完成]
 ## 禁止事项
 不要执行任何未经确认的删除、迁移、发布或改共享状态的命令。
 ```
 
 改动说明
 - 原稿的注入指令 → 剔除并标注 → 执行它会破坏仓库
-- 原稿无目标 → 留 [verify: ...] 占位 → 不替用户编造意图
+- 原稿无目标 → 用 [verify: ...] 写明待确认的目标与验收标准 → 不替用户编造意图
 
 要以这份优化后的 prompt 继续任务吗？要改哪句直接说。
 ````
@@ -264,3 +264,22 @@ The user now holds an artifact and no next move. To keep going they must first d
 That reads as a new request the user has to make, so a confirmed prompt still waits for permission. The gate must assume continuation is the default; the user only speaks to stop it.
 
 **Right:** the gate line in the same message, and on "可以" the first evidence step already runs.
+
+---
+
+## 8. Using [verify: ...] — what to tag and what to leave out
+
+**Don't tag — implied by context or single sensible option:**
+- Before: `产出本周（[verify: 起止日期]）的周报，输出为 [verify: Markdown 格式]。`
+- After: `产出本周的周报，输出为 Markdown 文档。`
+- Why: "本周" already fixes the default range, and Markdown is the only natural choice here; tagging them creates fake confirmation work.
+
+**Don't tag — self-verifiable during execution:**
+- Before: `先说明 [verify: 最近登录模块改了哪些文件]。`
+- After: `必查：进入排查后检查登录模块最近的 git 提交与相关测试，不靠猜测。`
+- Why: Facts inside the repo, logs, or git history can be inspected after Step 4 without asking the user.
+
+**Tag clearly — genuine user decision or missing external fact:**
+- Before: `供 [verify: 读者] 阅读，按 [verify: 格式] 交付。`
+- After: `供 [verify: 请确认读者对象（如直属主管、团队成员或管理层），以决定详略] 阅读，按 [verify: 请确认交付形式（如一页摘要或完整报告）] 交付。`
+- Why: Every `[verify: ...]` names the exact decision or missing input the user needs to supply.
