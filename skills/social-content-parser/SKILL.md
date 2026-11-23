@@ -1,6 +1,6 @@
 ---
 name: social-content-parser
-description: Parse public short-video and social share URLs into local content packages through platform-specific APIs plus an aggregated fallback covering 20+ platforms including Douyin, Kuaishou, Xiaohongshu, Bilibili, X/Twitter, YouTube, TikTok, Xigua, Haokan, Weishi, Pear Video, AcFun, Zhihu, Oasis, Meipai, Quanmin, Huya, Instagram, Doubao, Jimeng AI, and WeChat Channels. Use for extracting or archiving public links, noisy share parameters, FXTwitter, fallback routes, or when the user wants a share-link video transcribed with the companion video-to-text skill.
+description: "Parse and archive public social-media and short-video share URLs from 20+ platforms (Douyin posts/profiles, Xiaohongshu, Bilibili, X/Twitter, Kuaishou, YouTube, TikTok, Instagram, Zhihu, etc.) into structured local content packages with normalized metadata, media downloads, and optional transcription. Use whenever the user wants to extract, scrape, download, or archive a social share link, strip tracking parameters, fetch a Douyin creator profile, or save structured notes and media—even if they just say 「解析这个链接」「把这条笔记/推文/主页存下来」. Do not use when the user wants a deep comprehension summary of what a video explains on screen and in speech (use prizm-video-analyzer)."
 ---
 
 # Social Content Parser

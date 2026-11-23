@@ -1,11 +1,6 @@
 ---
 name: prizmkit-git-issue-workflow
-description: >-
-  扫描目标文件夹对应远程仓库的全部开放 issue，对每条分别调用 prizmkit-workflow 并各自提交；
-  列出改动供用户核验，核验通过后关闭对应 issue；仅在测试分支且项目配置了测试 CI/CD 时 push。
-  在用户调用 prizmkit-git-issue-workflow、要求按远程 issue 跑 PrizmKit、
-  或要从当前项目文件夹领取 Git 托管平台 issue 时使用。
-  不要用于用户已经口述的需求、feature/bug 列表、部署，也不要当定时任务。
+description: "批量领取并交付当前或指定项目远程 Git 仓库的开放 Issue，为每条 Issue 产出独立提交、变更核验清单及核验通过后的关单结果。只要用户要求扫描远程仓库未关闭 Issue、按远程 Issue 逐条跑 PrizmKit，或说「把仓库里的 issue 清一下」「按 GitHub/Git 开放 issue 逐个开发提测」，即使未点名本 skill 也必须使用。不要用于用户口述的单个需求（走 prizmkit-workflow）、已规划的本地任务列表（走 exec-prizmkit-monitor / exec-prizmkit-agent）或项目部署（走 prizmkit-deploy），也不要作定时任务。"
 ---
 
 # PrizmKit Git Issue Workflow

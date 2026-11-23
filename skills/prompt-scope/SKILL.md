@@ -1,6 +1,6 @@
 ---
 name: prompt-scope
-description: "Scope a brief, ambiguous, or underspecified request before acting on it: reconstruct intent, test premises, surface blind spots, state a scope contract, then execute under it and pause before risky writes. Use this skill whenever someone asks to check, review, audit, evaluate, design, or plan something; says 检查/评审/审计/评估/设计/帮我看看/有没有漏/是否合理/值不值得做/还有什么要注意; or wants a change pinned down before code is touched — even if they never say 'scope'. Not for rewriting an existing prompt: prompt-rewrite owns that."
+description: "Clarify and bound a brief, ambiguous, or underspecified request into an explicit scope contract before investigating or making risky writes, delivering evidence-backed findings or a requirement brief. Use whenever someone asks to check, review, audit, evaluate, design, or plan something—or says 「帮我看看」「有没有漏」「是否合理」「值不值得做」「还有什么要注意」「帮我写个 prompt」—and wants assumptions and scope pinned down first, even without saying 'scope'. Do not use to rewrite supplied prompt text (use prompt-rewrite), brainstorm product roadmaps (use product-iterate), run iterative code review-fix loops (use review-loop), or audit a skill (use skill-reviewer)."
 ---
 
 # Prompt Scope

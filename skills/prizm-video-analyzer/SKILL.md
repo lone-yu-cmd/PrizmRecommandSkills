@@ -1,6 +1,6 @@
 ---
 name: prizm-video-analyzer
-description: "从视频链接提取并总结片内内容（口播 + 画面）。用户贴 B站 / 抖音 / YouTube / 小红书 / TikTok 链接，或说总结视频、分析这个视频、视频讲了什么、提取字幕、看这个链接里的内容时，必须使用本 skill。不要只根据标题或简介猜测。没有平台字幕时下载音频并用 Whisper 转写，同时抽关键帧读板上的字。"
+description: "提取并深度总结视频链接或本地视频文件的片内实际内容，融合口播信息与关键帧画面文字输出结构化要点。只要用户贴出 B站、抖音、YouTube、小红书、TikTok 链接或本地 mp4/mov/webm 视频，并问「这个视频讲了什么」「帮我总结/分析这个视频」「提取字幕」「看看链接里讲的内容」，即使未点名本 skill 也必须使用，不要凭标题猜测。不要用于批量归档社媒图文/主页元数据或仅抓包下载（走 social-content-parser），也不要用于制作视频成片（走 prizm-video 或 ai-post-creator-v2）。"
 license: MIT
 ---
 

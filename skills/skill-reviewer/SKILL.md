@@ -1,6 +1,6 @@
 ---
 name: "skill-reviewer"
-description: "Static, read-only audit of a skill's SKILL.md and bundled files, producing a severity-ranked report without editing anything. Covers 17 dimensions: body size, progressive disclosure, conditional content, redundancy, instruction style, description triggering, reference/script health, safety, examples, and readability. Use this skill whenever someone asks to review, audit, lint, inspect, or diagnose a skill; asks whether a skill is well-written or follows best practices; or wants a documented quality report before publishing. Triggers on: 'review skill', 'audit skill', 'skill lint', 'skill health check', 'check skill quality', 'is this skill well-written', 'diagnose this skill'. This skill reports only — it never edits, restructures, or rewrites files."
+description: "Perform a static, read-only quality audit of a skill's SKILL.md and bundled resources, delivering a severity-ranked diagnostic report without modifying any files. Use whenever someone asks to review, audit, lint, inspect, or diagnose a skill, check pre-publish readiness, verify structural health after edits, or says 「帮我审一下这个 skill」「检查 skill 质量」「诊断触发和结构问题」, even without saying 'reviewer'. Do not use to refactor or edit the skill (use skill-optimizer), add missing sections or assets (use skill-enhancer), or test live behavioral outcomes (use skill-auditor)."
 ---
 
 # Skill Reviewer

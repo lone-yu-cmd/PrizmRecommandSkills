@@ -1,6 +1,6 @@
 ---
 name: "skill-optimizer"
-description: "Restructure and rewrite a skill that has grown too long, repetitive, or hard to follow: split content across SKILL.md and references/, convert MUST-style directives into instructions with rationale, rewrite the description for reliable triggering, fix reference and script health, and verify nothing was lost. Use this skill whenever someone wants to optimize, refactor, restructure, tighten, split, trim, clean up, modernize, or shorten a skill, or says a skill is bloated, messy, too long, or badly organized. Triggers on: 'optimize skill', 'refactor skill', 'restructure this skill', 'skill too long', 'trim this skill', 'split this skill', 'clean up this skill', 'modernize this skill'. It changes content that already exists; it does not add new capability, and it does not run an evaluation of the skill's behavior."
+description: "Refactor and streamline an existing skill that has grown bloated, repetitive, or unreliable—improving structure, progressive disclosure, instruction clarity, description triggering, and resource health without inventing unrequested features. Use whenever someone asks to optimize, trim, split, clean up, modernize, or fix triggering on a skill, or says 「优化/重构/精简/拆分这个 skill」「太长了」「触发不准」, even without saying 'optimizer'. Do not use to add brand-new sections or capabilities (use skill-enhancer), perform a read-only audit without edits (use skill-reviewer), or run behavioral benchmarks (use skill-auditor)."
 ---
 
 # Skill Optimizer

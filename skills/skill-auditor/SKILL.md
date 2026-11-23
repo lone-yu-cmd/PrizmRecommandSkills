@@ -1,6 +1,6 @@
 ---
 name: "skill-auditor"
-description: "Measure whether a skill actually works: write realistic test prompts, run them with and without the skill, grade the outputs, benchmark pass rate, time and tokens, and compare versions. Use this skill whenever someone wants to test a skill, run evals, benchmark performance, check whether a skill triggers when it should, compare an old and new version, or find out if an edit made a skill better or worse. Triggers on: 'test this skill', 'run evals', 'eval skill', 'benchmark skill', 'compare skill versions', 'does this skill work', 'skill triggering', 'measure skill quality'. Runs the skill and measures outcomes; it does not audit text and does not edit the skill."
+description: "Evaluate a skill's real behavioral effectiveness through controlled runs, blind version comparisons, pass-rate/token/latency benchmarks, and trigger-accuracy measurements. Use whenever someone asks whether a skill actually works, wants to run evals, benchmark performance, compare old and new skill versions, measure trigger reliability, or says 「测一下这个 skill」「跑个 eval」「对比两个版本」「为什么不触发」, even without saying 'audit'. Do not use for static text/structure linting without running the skill (use skill-reviewer), restructuring existing skill files (use skill-optimizer), or adding new sections/scripts to a skill (use skill-enhancer)."
 ---
 
 # Skill Auditor

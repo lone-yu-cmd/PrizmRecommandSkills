@@ -1,6 +1,6 @@
 ---
 name: prompt-rewrite
-description: "Rewrite one supplied draft prompt or instruction into a single execution-ready prompt, show what changed — a short diagnosis, the complete rewritten prompt in one paste-ready block, each edit with its reason — then continue the conversation under it once the user confirms. Use this skill whenever the user pastes or quotes a prompt, system message, instruction, or agent command and asks to optimize, rewrite, tighten, restructure, complete, or add constraints; says 优化/改写/精简/补全/加约束/这段提示词; wants to keep going after rewriting a draft ('优化完直接做'); or asks what the optimized prompt would look like — even if they never say 'rewrite'. Not for requests with no draft text to transform: prompt-scope owns those."
+description: "Transform one user-supplied draft prompt, system message, task brief, or agent instruction into a single execution-ready prompt and optionally continue the task under it once confirmed. Use whenever the user pastes or quotes existing prompt text and asks to optimize, rewrite, tighten, restructure, complete, or add constraints—or says 「优化/改写/精简/补全/加约束这段提示词」「优化完直接做」—even without saying 'rewrite'. Do not use when no draft prompt text is supplied and intent must be scoped from scratch (use prompt-scope), or when restructuring a SKILL.md package (use skill-optimizer)."
 ---
 
 # Prompt Rewrite

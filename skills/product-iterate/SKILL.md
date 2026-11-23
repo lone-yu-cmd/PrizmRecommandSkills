@@ -1,6 +1,6 @@
 ---
 name: product-iterate
-description: "Discuss an existing product's future by thinking as its users, then list every iteration idea that follows. Use whenever the owner wants to talk about what to build next, plan a roadmap or backlog, keep iterating, brainstorm product ideas, mine unmet user needs, imagine using the app as a customer, or says 继续迭代 / 还能做什么 / 有什么可做 / 产品规划 / 需求挖掘 / 帮我发现方向 / 软件未来 / 用户会希望有什么 / 从用户角度看 — even if no feature has been named. This is a discussion skill, not an implementation skill. Do not use it to build a feature the owner already specified."
+description: "Facilitate a read-only product iteration discussion by studying an existing product's source code and usage evidence through its users' eyes, surfacing a complete backlog of user-voiced iteration ideas without editing files. Use whenever an owner wants to explore what to build next, plan a roadmap, mine unmet user needs, walk the app as customers, or says 「继续迭代」「还能做什么」「产品规划」「需求挖掘」「帮我发现方向」「从用户角度看看」, even with no feature named. Do not use to implement a specified feature (use feature-planner or prizmkit-plan), run autonomous coding iteration loops (use iterate-pipeline-launcher), or scope a single ambiguous request (use prompt-scope)."
 compatibility: "Needs an agent that can read the bundled Markdown references and read the product's source code — source reading is the main working method. A browser tool plus a reachable running app is an optional bonus that upgrades some evidence from inference to fact; the skill works fully without one."
 ---
 

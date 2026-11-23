@@ -1,6 +1,6 @@
 ---
 name: "skill-enhancer"
-description: "Supplement an existing skill with new content: sections, references, agents, scripts, examples, error handling. Additive only — it inserts what is missing and never rewrites or deletes what is already there. Use this skill whenever someone wants to add a section to a skill, supplement a skill with reference docs, agents, or scripts, expand a skill's capabilities, add examples or error handling, enrich a skill, or fill in a gap someone else flagged. Triggers on: 'enhance skill', 'add to skill', 'supplement skill', 'expand skill', 'skill needs more', 'enrich skill content', 'add section to skill', 'add examples to this skill', 'complete this skill'."
+description: "Add missing content—new sections, reference docs, subagents, helper scripts, examples, or error handling—to an existing skill in strictly additive mode without modifying or deleting existing text. Use whenever someone wants to expand a skill's capabilities, fill a flagged gap, attach scripts or references, or says 「给 skill 加个章节/示例/脚本」「补充错误处理」「完善这个 skill 的能力」, even without saying 'enhance'. Do not use to refactor, split, tighten, or rewrite existing skill content (use skill-optimizer), perform a read-only quality diagnosis (use skill-reviewer), or run behavioral evals (use skill-auditor)."
 ---
 
 # Skill Enhancer
