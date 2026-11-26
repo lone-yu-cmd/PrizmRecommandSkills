@@ -41,10 +41,10 @@ Run every candidate finding through all four gates. Drop any item that fails Gat
 ## 3. Entry A Deduplication Protocol
 
 When the user provided known bugs, issues, or an existing backlog in Phase 1:
-1. Normalize each known item by `(area / endpoint / component, failure mechanism)`.
+1. Normalize each known item by `(area / endpoint / component, failure mechanism)`. If the supplied bugs/issues/logs carry no IDs, assign deterministic sequential fallback IDs (`KNOWN-01`, `KNOWN-02`, ...) in the baseline before tagging.
 2. Tag every verified finding:
    - `new` — distinct functional/design defect not covered by any supplied item.
-   - `sibling-of:<known-id>` — distinct defect in a different path or component that shares the same root mistake or affected journey as `<known-id>` (keep in `Findings`, noting the link).
+   - `sibling-of:<known-id>` — distinct defect in a different path or component that shares the same root mistake or affected journey as `<known-id>` (or synthetic `KNOWN-NN`) — keep in `Findings`, noting the link.
    - `already-tracked:<known-id>` — duplicates a supplied bug with no material new root cause or severity impact; **omit from new `Findings`** and record only in `## Deduplicated Against Known Bugs`.
 
 ---
@@ -58,7 +58,7 @@ Use this exact structure so humans can triage directly and downstream planning t
 
 ## Audit Summary
 - **Target**: <product/repo/module path>
-- **Product Shape**: <Web/SaaS | CLI/Dev Tool | Mobile | API/SDK | Backend/Worker>
+- **Product Shape**: <Web/SaaS | CLI/Dev Tool | Mobile | API/SDK | Backend/Worker | Hybrid (<constituent shapes>)>
 - **Entry Mode**: <Entry A — Incremental Deduplicated (N known items) | Entry B — Zero-Prerequisite Proactive Scan>
 - **Execution Mode**: <Static source audit + live walkthrough (<URL/cmd>) | Static source audit only — no live walkthrough executed>
 - **Verified Findings**: Critical N · High N · Medium N · Low N (Total: N) · Deduplicated duplicates skipped: N

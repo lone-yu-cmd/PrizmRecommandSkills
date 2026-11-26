@@ -3,23 +3,30 @@
   "evals": [
     {
       "id": 1,
-      "prompt": "我对当前工作区的 Web SaaS 账单协作系统还没做过任何 bug 排查，帮我做一次全面产品体检，重点从实际用户闭环、状态流转、权限边界和异常韧性角度反查有没有设计缺陷或功能 bug，先出可直接交给修复规划的缺陷清单，不要改代码。",
-      "expected_output": "Classifies Web/SaaS shape and Entry B (zero-prerequisite), reads source surfaces across UI/routes/handlers/models/auth/boundaries, runs all 8 abstract lenses in references/defect-lenses.md, filters false positives with references/evidence-and-filtering.md, labels fact vs inference, stays strictly read-only, and outputs calibrated AUDIT-NNN findings with Verification Criteria.",
-      "files": [],
-      "assertions": [
-        "Catches cross-tenant IDOR on GET /api/invoices/:id (requireAuth without workspace_id check)",
+      "prompt": "我对 evals/files/eval-1-saas-billing 的 Web SaaS 账单协作系统还没做过任何 bug 排查，帮我做一次全面产品体检，重点从实际用户闭环、状态流转、权限边界和异常韧性角度反查有没有设计缺陷或功能 bug，先出可直接交给修复规划的缺陷清单，不要改代码。",
+      "expected_output": "Classifies Web/SaaS shape and Entry B (zero-prerequisite), proceeds directly with static source audit, reads UI/routes/handlers/auth/webhook files under evals/files/eval-1-saas-billing, runs all 8 lenses in references/defect-lenses.md, filters false positives via references/evidence-and-filtering.md, labels fact vs inference, stays strictly read-only, and outputs calibrated AUDIT-NNN findings with Verification Criteria.",
+      "files": [
+        "evals/files/eval-1-saas-billing/server.js",
+        "evals/files/eval-1-saas-billing/src/components/InvoiceForm.jsx"
+      ],
+      "expectations": [
+        "Catches cross-tenant IDOR on GET /api/invoices/:id (requireAuth without workspaceId check)",
         "Does NOT false-positive report DELETE /api/invoices/:id as missing authZ (guarded by requireWorkspaceAdmin)",
-        "Catches illegal state transition in cancelInvoice (no paid/cancelled check) and silent webhook failure/verification gap",
+        "Catches illegal state transition in cancelInvoice (no paid/cancelled check) and silent webhook failure/verification gap in handleBillingWebhook",
         "Catches InvoiceForm.jsx missing in-flight double-submit lock + input wipe, plus float price calculation / lazy WEBHOOK_SIGNING_SECRET crash",
         "Includes structured Audit Summary, Severity rationale, Evidence [fact/inference], Verification Criteria, and Scope Guardrail"
       ]
     },
     {
       "id": 2,
-      "prompt": "我们现在已经整理了两个已知 bug（B-001 导出任务失败后列表仍显示完成；B-002 普通成员能通过 URL 访问管理员计费页），请在此基础上再深度反查一遍项目源码，看看同一条链路或其他核心流程里还有没有遗漏的功能 bug 或设计缺陷，注意和已有问题去重，别改动源文件。",
-      "expected_output": "Selects Entry A (incremental deduplicated audit), uses B-001 and B-002 as baseline, traces actual handlers/middlewares/state transitions, omits exact duplicates in Findings while documenting sibling-of links and already-tracked exclusions under Deduplicated Against Known Bugs, and outputs verification-ready AUDIT-NNN entries without editing code.",
-      "files": [],
-      "assertions": [
+      "prompt": "我们对 evals/files/eval-2-exports-admin 已经整理了两个已知 bug（B-001 导出任务失败后列表仍显示完成；B-002 普通成员能通过 URL 访问管理员计费页），请在此基础上再深度反查一遍项目源码，看看同一条链路或其他核心流程里还有没有遗漏的功能 bug 或设计缺陷，注意和已有问题去重，别改动源文件。",
+      "expected_output": "Selects Entry A (incremental deduplicated audit), uses B-001 and B-002 as baseline, traces handlers/state transitions/cascades under evals/files/eval-2-exports-admin, omits exact duplicates in Findings while documenting sibling-of links and already-tracked exclusions under Deduplicated Against Known Bugs, and outputs verification-ready AUDIT-NNN entries without editing code.",
+      "files": [
+        "evals/files/eval-2-exports-admin/exports.py",
+        "evals/files/eval-2-exports-admin/admin_billing.py",
+        "evals/files/eval-2-exports-admin/projects.py"
+      ],
+      "expectations": [
         "Does NOT re-report B-001 or B-002 as duplicate net-new AUDIT findings; records deduplication explicitly",
         "Finds sibling-of:B-001 in exports.py retry_export/run_export_worker (resets running status + appends partial file)",
         "Finds sibling-of:B-002 in admin_billing.py update_billing_plan (UI-only gating without server-side admin check)",
@@ -29,11 +36,15 @@
     },
     {
       "id": 3,
-      "prompt": "这是一个纯 CLI + 后台配置同步的开发者工具仓库，没有前端页面也没有启动服务。请反查它在配置校验、冷启动、超时与部分失败恢复、命令交互顺手度上有没有产品功能或设计缺陷。",
-      "expected_output": "Classifies CLI/Dev Tool shape, gracefully marks static source audit only (no live walkthrough), adapts lenses to skip interactive visual UI checklists while thoroughly checking verification-blind-spot, flow-dead-end, CLI ergonomic-friction-defect, boundary resilience, idempotent re-runs, and fail-fast startup config readiness.",
-      "files": [],
-      "assertions": [
-        "Adapts to CLI / Dev Tool shape: skips UI/React checklists and explicitly states static source audit only (no live run)",
+      "prompt": "evals/files/eval-3-cli-syncer 是一个纯 CLI + 后台配置同步的开发者工具仓库，没有前端页面也没有启动服务。请反查它在配置校验、冷启动、超时与部分失败恢复、命令交互顺手度上有没有产品功能或设计缺陷。",
+      "expected_output": "Classifies CLI/Dev Tool shape, gracefully marks static source audit only (no live walkthrough), adapts lenses to skip interactive visual UI checklists while checking verification-blind-spot, flow-dead-end, CLI ergonomic-friction-defect, boundary resilience, and cold-start config readiness on evals/files/eval-3-cli-syncer.",
+      "files": [
+        "evals/files/eval-3-cli-syncer/config.py",
+        "evals/files/eval-3-cli-syncer/syncer.py",
+        "evals/files/eval-3-cli-syncer/cli.py"
+      ],
+      "expectations": [
+        "Adapts to CLI / Dev Tool shape: skips visual UI checklists and explicitly states static source audit only (no live walkthrough)",
         "Catches missing network timeout on urllib.request.urlopen in syncer.py",
         "Catches mid-loop partial file overwrite without rollback or per-target summary in syncer.py",
         "Catches exit code 0 on failure + swallowed error diagnostics in cli.py AND cold-start crash on missing config in config.py",
