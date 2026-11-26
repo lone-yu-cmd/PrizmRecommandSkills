@@ -162,6 +162,15 @@ Walk an existing product's source code and user journeys from the customer's per
 /product-iterate 从用户角度看看这个软件还能继续迭代什么功能？
 ```
 
+### product-bug-audit
+
+Proactively audit an existing product's source code (and optionally a reachable running instance) in read-only mode to uncover functional bugs, broken first-ring user closure loops, and structural design defects across both zero-prerequisite scans and incremental audits deduplicated against known bugs.
+
+**Usage:**
+```
+/product-bug-audit 帮我全面反查一下当前系统有没有产品功能 bug 或设计缺陷
+```
+
 ### prizmkit-git-issue-workflow
 
 Scan all open GitHub issues on a project repository, run `/prizmkit-workflow` serially per issue to create separate commits, list changes for user verification, push only on test branches with CI/CD configured, and close verified issues.
