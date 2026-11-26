@@ -1,6 +1,6 @@
 ---
 name: "skill-reviewer"
-description: "Perform a static, read-only quality audit of a skill's SKILL.md and bundled resources, delivering a severity-ranked diagnostic report without modifying any files. Use whenever someone asks to review, audit, lint, inspect, or diagnose a skill, check pre-publish readiness, verify structural health after edits, or says 「帮我审一下这个 skill」「检查 skill 质量」「诊断触发和结构问题」, even without saying 'reviewer'. Do not use to refactor or edit the skill (use skill-optimizer), add missing sections or assets (use skill-enhancer), or test live behavioral outcomes (use skill-auditor)."
+description: "Perform a static, read-only quality audit of a skill's SKILL.md and bundled resources, delivering a severity-ranked diagnostic report without modifying any files. Use whenever someone asks to review, audit, lint, inspect, or diagnose a skill, check pre-publish readiness, verify structural health after edits, or says 「帮我审一下这个 skill」「检查 skill 质量」「诊断触发和结构问题」, even without saying 'reviewer'. Do not use to refactor, expand, or edit the skill (use skill-optimizer), or test live behavioral outcomes (use skill-auditor)."
 ---
 
 # Skill Reviewer

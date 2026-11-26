@@ -91,35 +91,21 @@ Read-only text audit of a skill. Reports, never edits.
 
 ### skill-optimizer
 
-Rewrite a skill that has grown long, repetitive, or hard to follow. Changes existing content only.
+Standalone existing-skill optimizer: diagnose real failure outputs or bloated structure, add missing sections, references, subagents, scripts, assets, or examples, split long bodies, rewrite overfitted or unclear instructions, and tune `description` triggering with zero external skill dependencies.
 
 **What it does:**
-- **Change list first**: every intended edit as problem / location / action (`extract`, `rewrite`, `delete`, `fix`) / reason, plus the line-budget math; nothing is written until you approve
-- **Four groups**: split by loading level, rewrite instructions with rationale, rewrite the description, fix objectively broken things
-- **Preview before writing**: diffs labelled `insert` / `replace` / `delete` with a reason per hunk
-- **Two-part verdict**: structural checks, and a behavior check that either reruns the skill's evals or states "behavior unverified" in the verdict line
-- Bundles its own `references/rewrite-playbook.md` — thresholds, split rules, rewrite patterns, description construction, verification
+- **Dual-track diagnosis**: starts from execution failures, bad outputs, or repeated ad-hoc helper scripts when available (with anti-overfitting generalization), and handles structural/capability changes under one 5-action list (`add`, `extract`, `rewrite`, `delete`, `fix`); supports `add-only`, `refactor-only`, `description-only`, `disclosure-only`, `diagnose-only`, and combined scope locks
+- **Adaptive confirmation gates**: merges Phase 1 and unified preview into a single gate for small targeted edits, while keeping separate plan + preview gates for cross-file splits, new agents/scripts, or conflicting edits
+- **Explicit conflict & orphan handling**: pairs incompatible additions with existing-line updates (or offers two explicit choices in `add-only`), and resolves orphan files in Phase 1
+- **Self-contained verification**: verifies structure and scope adherence, reruns `evals/evals.json` against a pre-edit snapshot when present, or proposes 2 smoke-test prompts (plus 4–6 trigger boundary sanity queries when `description` changes) before reporting `PASS` vs `STRUCTURAL PASS, BEHAVIOR UNVERIFIED`
+- Bundles `references/rewrite-playbook.md`, plus on-demand `references/structure-patterns.md` and `references/addition-checklist.md`
 
 **Usage:**
 ```
-/skill-optimizer skills/my-skill
-/skill-optimizer skills/my-skill 只看 description，别动别的
-```
-
-### skill-enhancer
-
-Add content to a skill. Strictly additive — inserts, never rewrites or deletes.
-
-**What it does:**
-- Classifies the addition (section / reference / agent / script / example), decides the loading level, and checks the line budget before writing
-- Plan before content: intent, the standard being applied, a file-level change table, an outline, and the projected line count
-- Stops when the addition conflicts with an existing line, quotes the line, and offers the two real options instead of silently editing it
-- Verifies insert-only diffs, reference integrity, duplication, and line budget — and reports behavior as unverified unless the skill has evals to rerun
-
-**Usage:**
-```
-/skill-enhancer skills/my-skill add an error recovery section
-/skill-enhancer skills/my-skill 补一个 agents/validator.md
+/skill-optimizer skills/my-skill "这次跑出来跳过了校验还绕了远路，帮我修一下"
+/skill-optimizer skills/my-skill add an error recovery section
+/skill-optimizer skills/my-skill 别动现有的东西，只补一个 agents/validator.md
+/skill-optimizer skills/my-skill 只修 description 和断链，别改正文
 ```
 
 ### skill-auditor

@@ -1,0 +1,118 @@
+{
+  "skill_name": "skill-optimizer",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "我有个叫 report-builder 的 skill，现在只输出诊断式的检查清单，用户看完还得自己动手。帮我给它加一个 'Fix Suggestions' section，放在输出格式那节后面，给每个 error 级的检查项配一条具体修复步骤。路径是 evals/files/report-builder",
+      "expected_output": "Merges the small targeted Phase 1 change list and Phase 2 unified preview into one single confirmation gate proposing an `add` (section) for 'Fix Suggestions' after Output Format, with line-budget math staying under 500 lines, without editing files.",
+      "files": [
+        "evals/files/report-builder/SKILL.md"
+      ],
+      "expectations": [
+        "Outputs a Phase 1 unified change list table containing an `add` action of type `section` placed after `## Output Format`.",
+        "Includes a New-content outline and drafted section preview citing `references/addition-checklist.md` §2 with imperative instructions and rationale.",
+        "Shows line-budget math proving `evals/files/report-builder/SKILL.md` remains well under 500 lines.",
+        "Combines the Phase 1 change list and unified preview into one single confirmation gate for this small targeted edit and stops without modifying `evals/files/report-builder/SKILL.md`."
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "evals/files/data-validator 里校验逻辑散落在各个 phase，我想补一个 agents/schema-checker.md，专门负责确认输出是否符合 schema。别动现有的东西，只加这个 agent 和指向它的那一行。我已预授权直接执行，无需等我二次确认，请走完 Phase 1-3 并直接落盘验证。",
+      "expected_output": "Locks authorized scope to `add-only`, creates a self-contained `agents/schema-checker.md` following structure-patterns.md §3, adds one conditional pointer in SKILL.md, and passes Phase 3 `insert-only` verification with zero modified or deleted pre-existing lines.",
+      "files": [
+        "evals/files/data-validator/SKILL.md"
+      ],
+      "expectations": [
+        "Records `Authorized scope: add-only` in Phase 1 and creates `evals/files/data-validator/agents/schema-checker.md`.",
+        "The new `agents/schema-checker.md` follows the 6-section template (`Role`, `Your Task`, `Inputs`, `Output Format`, `Evaluation Criteria`, `Edge Cases`) and is self-contained without needing `SKILL.md`.",
+        "Inserts only a conditional pointer in `SKILL.md` stating when to spawn `agents/schema-checker.md`, leaving all pre-existing lines untouched (`insert-only` PASS).",
+        "Phase 3 reports `STRUCTURAL PASS, BEHAVIOR UNVERIFIED` because `evals/files/data-validator` has no `evals/evals.json`."
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "evals/files/changelog-writer 的重写步骤缺 examples，用户看不出 before/after 到底差在哪。帮我补 2-3 个具体例子，展示从 MUST 式命令改成讲清理由的写法。",
+      "expected_output": "Merges the small targeted Phase 1 change list and Phase 2 unified preview into one single confirmation gate proposing an `add` (example) action with 2-3 concise, realistic before/after pairs in Step 2 and line-budget math under 500 lines, without editing files.",
+      "files": [
+        "evals/files/changelog-writer/SKILL.md"
+      ],
+      "expectations": [
+        "Proposes an `add` action of type `example` targeted at `## Step 2 — Rewrite entries`.",
+        "Includes 2–3 drafted realistic Before (bare `MUST`/`NEVER` directive) and After (directive + rationale) pairs under 30 lines per example in the preview.",
+        "Shows line-budget math confirming `SKILL.md` stays under 500 lines.",
+        "Combines the Phase 1 change list and unified preview into one single confirmation gate for this small targeted edit and stops without modifying `evals/files/changelog-writer/SKILL.md`."
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "帮我重构一下 evals/files/deploy-helper，SKILL.md 已经超过 500 行了，里面有一段大约 70 行的错误处理只有失败时才用，还有一堆全大写的 ALWAYS 硬性指令，也没有 evals。精简拆分一下但别丢规则。我已预授权直接执行，无需二次确认，请直接按流程完成拆分改写与 Phase 3 校验。",
+      "expected_output": "Extracts the ~70-line Error Handling section into `references/error-recovery.md` with a conditional pointer, rewrites bare ALWAYS directives into rationale-backed or principle-based rules, brings SKILL.md under 500 lines with lossless completeness, and reports `STRUCTURAL PASS, BEHAVIOR UNVERIFIED`.",
+      "files": [
+        "evals/files/deploy-helper/SKILL.md"
+      ],
+      "expectations": [
+        "Phase 1 shows line-budget math reducing `SKILL.md` from >500 lines to under 500 lines via `extract` and `rewrite`.",
+        "Moves the conditional `## Error Handling` block into `evals/files/deploy-helper/references/error-recovery.md` and leaves a conditional pointer in `SKILL.md` naming when to load it.",
+        "Rewrites hardcoded/bare `ALWAYS` directives (such as `deploy_final.yaml` and `ALWAYS validate the JSON payload`) into principle/rationale-backed instructions without losing rules (`Lossless completeness` PASS).",
+        "Phase 3 verdict line explicitly states `STRUCTURAL PASS, BEHAVIOR UNVERIFIED` because no `evals/evals.json` exists."
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "evals/files/api-tester 现在触发不准，而且正文引用的 `references/auth.md` 路径写错了，帮我只修 `description` 和这个断链路径，正文措辞和结构都别动。",
+      "expected_output": "Locks authorized scope to `description-only + fix`, merges the small targeted Phase 1 change list and unified preview into one single confirmation gate containing only the broken-path `fix` (`references/auth.md` -> `references/authentication.md`), `current vs proposed` 4-part `description`, and 4–6 trigger boundary sanity queries, then waits for confirmation without modifying files.",
+      "files": [
+        "evals/files/api-tester/SKILL.md",
+        "evals/files/api-tester/references/authentication.md"
+      ],
+      "expectations": [
+        "Records combined scope (`description-only + fix`) and proposes zero body wording rewrites or extractions.",
+        "Identifies the broken `references/auth.md` pointer and maps it to the existing `references/authentication.md` via a `fix` item.",
+        "Drafts a 4-part `description` (What, When, Keywords, Near-miss negatives) accompanied by 4–6 trigger boundary sanity queries (2–3 should-trigger and 2–3 tricky near-miss negatives).",
+        "Combines the Phase 1 change list and unified preview into a single confirmation gate for this small targeted edit and stops without writing to `evals/files/api-tester/SKILL.md`."
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "evals/files/release-check 目前约 470 行，需要补充一个约 50 行的回滚检查章节和 `scripts/verify_tag.sh` 脚本；另外原有第 45 行写着 'NEVER skip manual sign-off before tagging a release.'，和新的自动化回滚流程冲突，帮我一起处理好。我已预授权直接执行，无需等我二次确认，请直接完成变更与 Phase 3 自检。",
+      "expected_output": "Single unified Phase 1 change list combining `add`, `extract`, `rewrite`/`delete`, and `fix` so SKILL.md stays under 500 lines, explicitly resolves the line-45 conflict, creates executable `scripts/verify_tag.sh` with shebang and invocation command, and passes Phase 3 checks.",
+      "files": [
+        "evals/files/release-check/SKILL.md"
+      ],
+      "expectations": [
+        "Phase 1 math flags that +50 lines on a ~470-line `SKILL.md` would exceed 500 lines and pairs `add` with `extract` to keep `SKILL.md` under 500 lines.",
+        "Pairs the conflicting line 45 (`NEVER skip manual sign-off before tagging a release.`) with an explicit `rewrite` or `delete` explaining the causal conflict.",
+        "Creates `evals/files/release-check/scripts/verify_tag.sh` with a shebang, header comment, and execute permission (`chmod +x`), and documents its invocation command in `SKILL.md`.",
+        "Phase 3 verifies pointer integrity, script execute bit, and line budget (<500 lines)."
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "我想给 evals/files/doc-sync 新增一个 `incremental` 增量同步模式，并配一份 `references/incremental-sync.md` 规范文档。我已预授权直接落地新增模式和参考文档，补完后帮我评估触发描述需不需要跟着改（先给建议，别直接改 `description`）。",
+      "expected_output": "Applies `add` (section + reference) with a conditional pointer in SKILL.md per `structure-patterns.md` §2 and `addition-checklist.md` §2-3, proposes a `description` update per `rewrite-playbook.md` §4, and leaves frontmatter `description` unmodified pending confirmation.",
+      "files": [
+        "evals/files/doc-sync/SKILL.md"
+      ],
+      "expectations": [
+        "Creates `evals/files/doc-sync/references/incremental-sync.md` and adds the `incremental` mode section with a conditional pointer in `SKILL.md`.",
+        "Follows `addition-checklist.md` §2–3 with zero duplication between `SKILL.md` and the new reference file.",
+        "Evaluates `description` per `rewrite-playbook.md` §4, shows current vs proposed `description` incorporating the `incremental` mode, and waits for confirmation.",
+        "Leaves the original frontmatter `description` in `evals/files/doc-sync/SKILL.md` unchanged."
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "上次跑 evals/files/csv-cleaner 处理 sales_q4.csv 时翻车了：中文乱码、引号里的逗号把列拆歪了，而且每次模型都要现写一段 Python 脚本去清空白行。帮我优化一下，别只针对 sales_q4.csv 打死补丁。我已预授权直接落盘修改，改完后给我出 2 条冒烟测试验证效果。",
+      "expected_output": "Uses evidence-first diagnosis to fix root causes rather than cosmetic formatting, generalizes encoding detection and RFC-4180/standard CSV-parser handling without hardcoding `sales_q4.csv`, promotes repeated blank-row cleanup into `evals/files/csv-cleaner/scripts/`, and proposes 2 realistic smoke-test prompts in Phase 3 instead of reporting bare `PASS`.",
+      "files": [
+        "evals/files/csv-cleaner/SKILL.md"
+      ],
+      "expectations": [
+        "Traces edits directly to the reported failures (encoding handling, quoted delimiters, repeated helper script) rather than cosmetic formatting tweaks.",
+        "Adds generalized character-encoding detection and standard CSV-parser quoting rules without hardcoding `sales_q4.csv` (anti-overfitting).",
+        "Creates a reusable helper script under `evals/files/csv-cleaner/scripts/` with docstring/header and adds its invocation command in `SKILL.md`.",
+        "Because `evals/files/csv-cleaner` has no `evals/evals.json`, proposes 2 realistic smoke-test prompts in Phase 3 and does not report bare `PASS` without running behavioral checks."
+      ]
+    }
+  ]
+}
