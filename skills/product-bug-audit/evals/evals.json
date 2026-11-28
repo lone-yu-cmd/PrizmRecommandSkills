@@ -14,7 +14,8 @@
         "Does NOT false-positive report DELETE /api/invoices/:id as missing authZ (guarded by requireWorkspaceAdmin)",
         "Catches illegal state transition in cancelInvoice (no paid/cancelled check) and silent webhook failure/verification gap in handleBillingWebhook",
         "Catches InvoiceForm.jsx missing in-flight double-submit lock + input wipe, plus float price calculation / lazy WEBHOOK_SIGNING_SECRET crash",
-        "Includes structured Audit Summary, Severity rationale, Evidence [fact/inference], Verification Criteria, and Scope Guardrail"
+        "Includes structured Audit Summary, Severity rationale, Evidence [fact/inference], Verification Criteria, and Scope Guardrail",
+        "Records Review Mode and rejected/needs-verification counts in Audit Summary, and renders Companion Review Guidance matching review-loop availability (including verbatim 'npx skills add https://github.com/lone-yu-cmd/PrizmRecommandSkills' if absent) without running installers"
       ]
     },
     {
@@ -31,7 +32,8 @@
         "Finds sibling-of:B-001 in exports.py retry_export/run_export_worker (resets running status + appends partial file)",
         "Finds sibling-of:B-002 in admin_billing.py update_billing_plan (UI-only gating without server-side admin check)",
         "Finds net-new cascade defect in projects.py delete_project (orphan scheduled_exports/exports without cleanup)",
-        "Provides file:line evidence, fact/inference separation, calibrated Severity + rationale, and Verification Criteria"
+        "Provides file:line evidence, fact/inference separation, calibrated Severity + rationale, and Verification Criteria",
+        "Runs Entry A pre-deduplication and independent/self-review falsification, keeping any unconfirmed leads isolated in Needs Verification rather than mixed into confirmed Findings, and includes Companion Review Guidance"
       ]
     },
     {
@@ -48,7 +50,8 @@
         "Catches missing network timeout on urllib.request.urlopen in syncer.py",
         "Catches mid-loop partial file overwrite without rollback or per-target summary in syncer.py",
         "Catches exit code 0 on failure + swallowed error diagnostics in cli.py AND cold-start crash on missing config in config.py",
-        "Remains read-only and outputs Verification Criteria plus Scope Guardrail per finding"
+        "Remains read-only and outputs Verification Criteria plus Scope Guardrail per finding",
+        "Includes Review Mode in Audit Summary and Companion Review Guidance (with verbatim install command when review-loop is absent) while remaining strictly read-only"
       ]
     }
   ]

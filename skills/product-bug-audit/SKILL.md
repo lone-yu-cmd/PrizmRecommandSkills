@@ -1,6 +1,6 @@
 ---
 name: product-bug-audit
-description: "Audit an existing product's source code (and optionally a reachable running instance) in read-only mode to proactively uncover functional bugs, broken user-closure loops, and structural design defects—or run a deduplicated incremental scan on top of known bugs—producing an evidence-backed defect list ready for standalone tracking or downstream bug-planning tools. Use whenever the user asks to find missing or hidden bugs, audit product/design flaws, check if anything still breaks before release, or says 「反查系统 bug」「查设计缺陷」「产品体检」「查产品功能 bug」「看看还有没有漏掉的 bug」「audit product bugs」「find design flaws」, even if no specific error log is supplied. Do not use for brainstorming new feature roadmaps (use product-iterate), formatting already-reported errors into a backlog without scanning the codebase, reviewing uncommitted code diffs (use review-loop or code review), or auditing skill definitions (use skill-reviewer)."
+description: "Audit an existing product's source code (and optionally a reachable running instance) in read-only mode to proactively uncover functional bugs, broken user-closure loops, and structural design defects—or run a deduplicated incremental scan on top of known bugs—producing an independently reviewed, evidence-backed defect list ready for standalone tracking or downstream bug-planning tools. Use whenever the user asks to find missing or hidden bugs, audit product/design flaws, check if anything still breaks before release, or says 「反查系统 bug」「查设计缺陷」「产品体检」「查产品功能 bug」「看看还有没有漏掉的 bug」「audit product bugs」「find design flaws」, even if no specific error log is supplied. Do not use for brainstorming new feature roadmaps (use product-iterate), formatting already-reported errors into a backlog without scanning the codebase, reviewing uncommitted code diffs (use review-loop or code review), or auditing skill definitions (use skill-reviewer)."
 compatibility: "Primary inspection relies on reading product source code, routes/commands, UI views, handlers, schemas, and tests; requires no running app or browser. A browser or CLI runtime tool plus a user-supplied URL or approved launch command is an optional enhancement that upgrades inferences to runtime facts."
 ---
 
@@ -11,8 +11,8 @@ Proactively reverse-audit an existing product for functional bugs, broken first-
 ## Responsibility
 
 This skill is **strictly read-only** toward the target codebase:
-- **Does**: fix scope and entry mode, read source files deeply across routes/UI/handlers/data/boundaries, optionally walk a live instance when explicitly provided, apply shape-matched defect lenses, verify evidence to eliminate false positives, deduplicate against any known bugs, and output a structured defect report.
-- **Does not**: modify, fix, refactor, or scaffold product source, tests, or configs; start servers, install packages, or migrate databases unattended; or invent feature wishlists masquerading as bugs.
+- **Does**: fix scope and entry mode, read source files deeply across routes/UI/handlers/data/boundaries, optionally walk a live instance when explicitly provided, apply shape-matched defect lenses, verify evidence through an independent read-only false-positive review pass (routing unconfirmed suspects to `Needs Verification`), deduplicate against known bugs, check companion `review-loop` availability read-only (printing installation guidance when absent), and output a structured defect report.
+- **Does not**: modify, fix, refactor, or scaffold product source, tests, or configs; start servers, install packages, run `npx skills add` or other installers automatically, or migrate databases unattended; or invent feature wishlists masquerading as bugs.
 - **Single write exception**: if the user explicitly asks to save the defect list to a file, write **only** the audit report to the user-named or confirmed path.
 
 ## Conventions
@@ -66,26 +66,32 @@ Read `references/defect-lenses.md` **before scanning for findings**.
 
 ---
 
-## Phase 4 — Verify Evidence, Filter False Positives & Deduplicate
+## Phase 4 — Verify Evidence, Independently Review & Deduplicate
 
 Read `references/evidence-and-filtering.md` **before finalizing any finding**.
 
-1. **Eliminate false positives**: verify every candidate against actual upstream guards, global middleware, validators, and tests. Drop any item prevented elsewhere in the call chain.
-2. **Apply Anti-Bloat & Defect Gates**: strictly separate real functional/design defects from speculative feature requests, mechanical CRUD padding, and cosmetic style preferences. A clean module returns zero findings rather than manufactured nitpicks.
-3. **Calibrate severity**: apply concrete severity indicators (`critical`, `high`, `medium`, `low`) and write a brief justification for every severity assignment—never collapse findings into uniform `high`.
-4. **Deduplicate against known bugs (Entry A only)**: compare every verified finding against the Phase 1 known-bug baseline and classify as `new`, `sibling-of:<known-id>` (distinct defect sharing an area or root pattern), or `already-tracked:<known-id>` (omit from new findings unless new reproduction/severity evidence materially expands it).
+1. **First-pass Evidence, Gates 1–3 & Entry A Pre-Dedup**: trace the full execution chain (`§1`), drop candidates failing `§2` Gates 1–3 (`Defect vs. Feature Wish`, `Guarded-Elsewhere`, `Anti-Mechanical-CRUD & Anti-Nitpick`), and in Entry A pre-filter obvious `already-tracked:<known-id>` duplicates (`§3`) before spending review budget.
+2. **Independent False-Positive Review (Mandatory when ≥1 candidate survives)**: if zero candidates survive Step 1, short-circuit cleanly (a clean module returns zero findings) and record `Not applicable — 0 candidates survived first-pass gates` under `Review Mode` in `## Audit Summary`. Otherwise execute `§4 Independent False-Positive Review Protocol` across its four falsification dimensions (evidence accuracy, trigger reachability, existing guards, and non-duplication):
+   - **Primary path**: when the host supports a separate read-only context (subagent, child session, or fresh context with no edits and no git worktree), run the blind-adversarial reviewer directly against target sources.
+   - **Fallback path**: when no separate read-only context is available (or reviewer output remains incomplete after a retry), run the built-in read-only self-review checklist in `§4` and record the fallback mode in `## Audit Summary`.
+   - **Three-way disposition**: keep verified defects (`confirmed`) in `## Findings`; drop evidence-disproved false positives (`rejected`, counted in `## Audit Summary`); isolate statically unprovable leads or unproven disputes (`needs-verification`) in `## Needs Verification` so they never mix with confirmed `AUDIT-NNN` findings.
+3. **Final Severity Calibration & Entry A Tagging**: apply `§2` Gate 4 (`Calibrated Severity Ladder`) with a brief rationale to every `confirmed` finding (never collapse findings into uniform `high`), and finalize Entry A classification (`new`, `sibling-of:<known-id>`, or `already-tracked:<known-id>`) across both `confirmed` and `needs-verification` items.
 
 ---
 
-## Phase 5 — Deliver Structured Defect Report
+## Phase 5 — Deliver Structured Defect Report & Companion Review Guidance
 
-Render the exact structured output specified in `references/evidence-and-filtering.md` so the report works standalone in any repository and can feed directly into downstream bug-planning tools without manual rewriting:
-- `## Audit Summary` (target, product shape, entry mode, execution mode static vs live, totals by severity and dedup status)
-- `## Findings` (`AUDIT-NNN` with `Title`, `Lens`, `Severity` + rationale, `Status`, `Location`, `Actual vs Expected`, `Evidence [fact/inference]`, `Verification Criteria`, and `Scope Guardrail`)
+Render the exact structured output specified in `§6 Deliverable Output Template` of `references/evidence-and-filtering.md` so the report works standalone and feeds directly into downstream planning tools without manual rewriting:
+- `## Audit Summary` (target, product shape, entry mode, execution mode, review mode, and totals by severity, rejected false positives, needs-verification items, and dedup count)
+- `## Findings` (confirmed `AUDIT-NNN` items only, preserving `Title`, `Lens`, `Severity` + rationale, `Status`, `Location`, `Actual vs Expected`, `Evidence [fact/inference]`, `Verification Criteria`, and `Scope Guardrail`)
+- `## Needs Verification` (optional — include only when `needs-verification` suspects remain; omit when empty)
 - `## Deduplicated Against Known Bugs` (Entry A only: known bug IDs matched, excluded duplicates, and uncovered `sibling-of` links)
 - `## Coverage & Not Checked` (inspected paths/surfaces, applicable vs skipped lenses, and unread/unverified runtime limits)
+- `## Companion Review Guidance` — run the read-only availability check in `§5 Companion review-loop Detection & Installation Guidance` of `references/evidence-and-filtering.md`. Keep this guidance separate from Phase 4 because `review-loop` requires uncommitted git changes for multi-round review-fix loops, whereas `product-bug-audit` stays strictly read-only:
+  - **Installed branch**: note concisely that `review-loop` is installed and ready after the user fixes confirmed defects (or saves this report into a tracked file for iterative refinement); do not auto-invoke it.
+  - **Not-installed branch**: print the verbatim install command `npx skills add https://github.com/lone-yu-cmd/PrizmRecommandSkills` explaining its post-fix or saved-report role while confirming that false-positive verification already completed via the Phase 4 read-only review path without blocking; never run the install command automatically.
 
-Stop cleanly after presenting the report; never auto-implement fixes or edit workspace files without an explicit follow-up instruction.
+Stop cleanly after presenting the report; never auto-implement fixes, execute installers, or edit workspace files without an explicit follow-up instruction.
 
 ---
 
@@ -96,8 +102,10 @@ Stop cleanly after presenting the report; never auto-implement fixes or edit wor
 - Auditing visual UI checklists on a CLI tool or backend batch worker.
 - Duplicating already-reported bugs unchanged when the user gave a known-bug list in Entry A.
 - Quietly editing business files, tests, or plans instead of delivering a pure read-only audit.
+- Mixing unverified or statically unprovable leads into confirmed `## Findings` instead of dropping disproved false positives or isolating insufficient-evidence suspects in `## Needs Verification`.
+- Blocking the audit when `review-loop` is absent, attempting to invoke `review-loop` on an empty git diff, or running `npx skills add` automatically instead of printing guidance and completing the built-in read-only review pass.
 
 ## Resources
 
 - `references/defect-lenses.md` — surface-shape lens router and 8 abstract defect lenses across First-Ring Product Closure and Structural Design Integrity. Load in Phase 3 before running the audit scan.
-- `references/evidence-and-filtering.md` — evidence verification protocol, 4 false-positive & anti-bloat gates, severity ladder, Entry A deduplication rules, exact output template, and worked finding format. Load in Phase 4 before finalizing findings.
+- `references/evidence-and-filtering.md` — evidence verification protocol (`§1`), 4 false-positive & anti-bloat gates and severity ladder (`§2`), Entry A deduplication rules (`§3`), independent false-positive review protocol (`§4`), companion `review-loop` detection and installation guidance (`§5`), deliverable output template (`§6`), and worked finding format. Load in Phase 4 before finalizing findings.

@@ -3,6 +3,7 @@
 // Usage: node scripts/ensure_runtime.mjs
 
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,7 +87,21 @@ async function main() {
   console.log('Chrome cookies for YouTube and Instagram stay in the local Chrome profile.');
 }
 
-main().catch((err) => {
-  console.error(err?.message || err);
-  process.exit(1);
-});
+function isMain() {
+  if (!process.argv[1]) return false;
+  const selfPath = fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(selfPath);
+  } catch {
+    return path.resolve(process.argv[1]) === selfPath;
+  }
+}
+
+export { assetName, vendorPath, installedVersion, download };
+
+if (isMain()) {
+  main().catch((err) => {
+    console.error(err?.message || err);
+    process.exit(1);
+  });
+}
